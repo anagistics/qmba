@@ -1,0 +1,47 @@
+# By Application
+
+* Basic approach for all applications:
+  * Introduce application from a business perspective
+  * Show academic paper and research
+    * point out methods used therein
+  * Explain methods
+    * combine theory and practice of coding in R
+    
+
+## Fraud Detection
+
+* Application: Credit Card fraud detection
+  * https://www.researchgate.net/publication/260837261_Learned_lessons_in_credit_card_fraud_detection_from_a_practitioner_perspective
+* Rare events
+* Class imbalance
+* one source article: https://towardsdatascience.com/detecting-financial-fraud-using-machine-learning-three-ways-of-winning-the-war-against-imbalanced-a03f8815cce9
+* over-sampling, under-sampling, SMOT
+* Dimension reduction 
+  * PCA
+* anomaly detection
+  * univariate or multi-dimensional
+  * cluster based
+  * classification based
+    * one-class classification
+  * Material: https://cse.buffalo.edu/~jing/cse601/fa12/materials/outlier_detection.pdf
+
+## Text Mining
+* Application:
+  * Bankruptcy prediction from financial reports or
+  * News aggregation, i.e. topic analysis (expense classification)
+  
+  
+
+## Network Analysis
+* Application:
+  * Money laundry?
+  * Process Mining
+  * Web click path
+  
+## Time series forecasting
+* Application:
+  * Cash flow prediction
+  
+  
+
+

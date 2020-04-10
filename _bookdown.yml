@@ -1,0 +1,3 @@
+rmd_files: ["index.Rmd", "intro.Rmd", "process.Rmd", "data.Rmd", "reproducibility.Rmd", 
+"methods.Rmd", "eda.Rmd", "ml-model.Rmd", "applications.Rmd", 
+"explainable.Rmd", "remarks.Rmd"]

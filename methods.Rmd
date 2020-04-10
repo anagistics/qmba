@@ -1,0 +1,15 @@
+# Methods
+
+## Simulation
+
+## Queueing Theory
+
+## Constraint Programming
+
+## Linear Programming
+
+## Mixed Integer Programming
+
+## Quadratic Programming
+
+## Nonlinear Programming

@@ -1,0 +1,10 @@
+# Explainable AI
+
+* Why we need explainable AI
+  * Ethical arguments
+  * Economical arguments
+* How to interpret and explain the predictions of AI models
+* local methods
+* global methods
+* counterfactual explanations
+

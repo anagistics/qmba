@@ -1,0 +1,27 @@
+# Time Series
+
+In this chapter the analysis of time series is presented. In R, the packages `zoo` and `xts` are frequently used for handling time series. In `xts`, time series are specializations of matrices having a time based index, i.e. an `xts` object is a matrix of observations indexed by time.
+
+As an example consider
+```{r}
+suppressPackageStartupMessages(library(xts))
+
+days <- seq(as.Date("2020-03-15"), length.out = 5, by = "days")
+observations <- rnorm(5)
+
+tseries <- xts(observations, order.by = days)
+
+tseries
+```
+## Representing time
+
+An analysis of time series starts with a proper representation of time. The international standard ISO 8601:2004 (cf. https://de.wikipedia.org/wiki/ISO_8601) defines a date and time representation by the format:
+
+`YYYY-MM-DDTHH:MM:SS.ssss`.
+
+The first part obviously corresponds to the date and the second part, after the separating letter `T` to the time including fractions of seconds. The time representation may be followed by a 6 character sequence with the format `+00:00` or `-00:00` that shows the difference in hours and minutes of the preceeding date and time to UTC (Universal Time Coordinated). For example, the string `+01:00` indicates a time one hour ahead of UTC.
+
+The most interesting property of this time representation is its hierarchical structure from left to right, i.e. the representation starts with the largest period and ends with the shortest one. An umambiguous date and time period can thus be represented by a substring starting with the year until the component with the desired granularity. For example, a monthly date always should include the year and daily granularity would comprise year and month.
+
+
+

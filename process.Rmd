@@ -1,0 +1,24 @@
+# Process
+
+## Solution design
+  * understanding goals and scope
+  * ideation
+  * manage expectations
+    * anticipate questions 
+    * mockup
+  * The case of software
+    * Start with the interfaces 
+      * UI
+      * Technical interfaces
+
+## Stash
+* Business Concept
+* Data Preparation
+* Exploratory Analysis
+* Model Building
+* Application Design
+* Deployment
+  * Technical
+  * User centric
+* Operations
+* Auditing

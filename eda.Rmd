@@ -1,0 +1,17 @@
+# Exploratory Data Analysis
+    * Preprocessing
+      * Technical aspects
+        * Quantity
+        * Encoding
+        * Data types
+      * Validation
+        * Outliers
+        * Missing values
+        * Duplicates
+        * Magic numbers
+        * Errors
+    * Getting an overview
+      * Summarising
+      * Visualisation
+        * Scatterplots
+        * Density plots

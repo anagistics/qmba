@@ -1,0 +1,30 @@
+# Data
+
+## Data Access
+    * Data Sources
+      * Structured data
+        * Relational data bases
+        * APIs
+        * Application software
+      * Unstructured data
+        * Text, Audio and Video
+      * Systems
+        * Enterprise Resource Planning
+        * Data Warehouses
+        * Decentralized data / shadow IT
+        * Internet
+
+## Data access technologies
+      * File access
+      * Databases
+        * Relational databases
+        * Document stores
+        * Graph databases
+      * Streaming
+      * Requests
+        * Web scraping
+
+## Privacy and information security
+    * GDPR
+    * Pseudonymization and anonymization
+    * Encryption

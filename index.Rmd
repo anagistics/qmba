@@ -1,0 +1,23 @@
+--- 
+title: "Quantitative Methods for Business Analytics"
+author: "Andreas Cardeneo"
+date: "`r Sys.Date()`"
+site: "bookdown::bookdown_site"
+output:
+  bookdown::gitbook:
+    lib_dir: "book_assets"
+  bookdown::pdf_book:
+    keep_tex: yes
+documentclass: book
+biblio-style: apalike
+link-citations: yes
+---
+
+# Concept
+
+* Symptoms, Diagnosis, Therapy: Analogies to Medicine
+* Pattern: Solution for a Problem in a Context
+
+
+
+      
