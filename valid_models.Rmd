@@ -1,0 +1,13 @@
+# Valid Models
+
+## Colinearity
+
+* Check for colinearity and correlation, because otherwise the choice of reference level will fail
+
+## Reference level for categorical variables
+
+* Choice of reference levels: Modal factor is level 0
+* This independent choice of reference levels per variable only works if variables are in fact independent.
+
+
+
