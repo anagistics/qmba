@@ -23,5 +23,24 @@ The first part obviously corresponds to the date and the second part, after the 
 
 The most interesting property of this time representation is its hierarchical structure from left to right, i.e. the representation starts with the largest period and ends with the shortest one. An umambiguous date and time period can thus be represented by a substring starting with the year until the component with the desired granularity. For example, a monthly date always should include the year and daily granularity would comprise year and month.
 
+## Common operations on time series
+
+### Aggregation over discrete periods
+
+* Aggregate time series of different granularity to a common grid, e.g. combine a time series with daily data and one with monthly data into a series with monthly data
+
+* Compute metrics over discrete periods, e.g. a monthly average or a yearly sum. 
+
+### Aggregation over rolling horizons
+
+* Useful for trend computations, e.g. average over the last three months or new infections over the last two weeks. The idea is typically to average out short term variations.
+
+### Interpolation
+
+* Replace missing values within a time series. Time series data might have *holes* (missing values) e.g. due to a missing reading because of defect sensor or because of data transmission problems.
+
+### Extrapolation and forecasting
+
+* The typical application is to extrapolate time series into the future, i.e. to predict the future development of the underlying process.
 
 

@@ -1,4 +1,12 @@
-# Valid Models
+# Valide Modelle
+
+*Deutsch, damit es als Arbeitsblatt geeignet ist*
+
+In diesem Kapitel geht es um Techniken, um *valide* Modelle zu erstellen. Valide Modelle erfüllen die Voraussetzungen der Methoden, die für ihre Analyse verwendet werden. Wir werden hier zunächst mit Lineare Regression arbeiten, weil diese Methode gut verständlich und theoretisch fundiert ist und ihre Ergebnisse gut *erklärbar* sind. Das heißt nicht, dass diese Method auch immer *geeignet* ist, aber in vielen praktischen Fällen kann sie ein guter erster Ansatz sein.
+
+Wir werden einen im Internet und für R verfügbaren Datensatz benutzen, den *Ames Iowa Housing" Datensatz (s. @R-AmesHousing). Dabei handelt es sich um Verkaufsdaten zu Wohnungen und Gebäuden sowie um beschreibende Daten der Immobilien. Es handelt sich damit um ein durchaus anwendungsnahes Szenario.
+
+
 
 ## Colinearity
 

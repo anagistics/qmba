@@ -9,8 +9,9 @@ output:
   bookdown::pdf_book:
     keep_tex: yes
 documentclass: book
-biblio-style: apalike
-link-citations: yes
+bibliography: ["citations.bib"]
+biblio-style: "apalike"
+link-citations: true
 ---
 
 # Concept
