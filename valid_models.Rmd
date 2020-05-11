@@ -6,6 +6,116 @@ In diesem Kapitel geht es um Techniken, um *valide* Modelle zu erstellen. Valide
 
 Wir werden einen im Internet und für R verfügbaren Datensatz benutzen, den *Ames Iowa Housing" Datensatz (s. @R-AmesHousing). Dabei handelt es sich um Verkaufsdaten zu Wohnungen und Gebäuden sowie um beschreibende Daten der Immobilien. Es handelt sich damit um ein durchaus anwendungsnahes Szenario.
 
+## Das Szenatio
+
+Die *HaiBank AG* möchte im Niedrigzinsumfeld und angesichts steigender Immobilienpreise ihr eigenes Angebot als Immobilienmakler ausbauen. Unter der Marke *ImmoHai* sollen Maklerdienste für Immobilien angeboten werden und eine wichtige Komponente dabei ist die Abschätzung der erwarteten Profitabilität der Vermittlung einer Immobilie. Neben dem eigenen Aufwand auf der Kostenseite ist dafür der erzielbare Verkaufspreis maßgeblich. Traditionell wurde dieser Verkaufspreis von Immobilienexperten nach einer Begehung des Objekts und anhand der Erfahrung eingeschätzt. Weil die Unternehmensstrategie einen deutlichen Ausbau des Maklergeschäfts anstrebt, ist dieser Ansatz aufgrund des hohen Aufwands nicht mehr zu leisten. Stattdessen soll es, ähnlich wie bei der Bonitätsprüfung für Hauskredite, eine Software geben, die anhand von Kennzahlen der Immobilie einen realisierbaren Verkaufspreis prognostiziert. Diese Software soll von Sachbearbeitern im Kundengespräch verwendet werden und dabei helfen zu entscheiden, ob die *HaiBank* als Makler für die betreffende Immobilie auftreten soll.
+
+### Aufgabenstellung
+
+Ihre Aufgabe besteht darin, ein **Prognosemodell für Immobilienpreise** und einen Prototyp für die zugehörige **Anwendung** zu entwickeln, die dieses Prognosemodell verwendet.
+
+Weil Ihre hauseigene IT auf absehbare Zeit noch damit beschäftigt ist, die bislang getrennt in jeder Filiale in Excel-Dateien festgehaltenen Immobiliengeschäfte in eine zentrale Datenbank zu überführen, haben Sie sich aus dem Internet eine frei verfügbare Datensammluung von Immobilienpreisen besorgt. Mit Hilfe dieser Daten können Sie schon einmal den ganzen Prozess der Modellentwicklung durchlaufen und einen Prototypen erstellen, damit Ihr Management auch nachvollziegen kann, wie die fertige Lösung aussehen wird.
+
+Als technische Plattform stehen Ihnen 
+
+* die Programmiersprache *R*, 
+* die Entwicklungsumgebung *RStudio* und 
+* das auf *R* basierende Framework *flexdashboard* 
+
+für die Entwicklung von Modell und Anwendung zur Verfügung.
+
+### Setup
+
+Um mit *R* zu starten bietet es sich an, ein Konto bei *RStudio Cloud* anzulegen. Damit haben Sie eine *RStudio* Entwicklungsumgebung, die Sie über Ihren Browser nutzen können und eine Basisinstallation von *R* als Ausgangsbasis. Im Rahmen dieses Kurses können Sie einem bereits bestehenden *Workspace* beitreten (Anleitung s. unten). 
+
+Alternativ können Sie *R* und *RStudio* auch lokal auf Ihrem Rechner installieren. Wie dies gemacht wird, erfahren Sie unter [R und RStudio installieren](https://rstudio.com/products/rstudio/download/).
+
+#### RStudio Cloud Workspace
+Hier die Erklärung, wie das funktioniert
+
+### Grundsätzliches zur Arbeit mit *R*
+
+Neben Python ist *R* eine der derzeit populärsten Sprachen für Datenanalye, Statistik und maschinellem Lernen. Während Python als vielseitige Programmiersprache gerne von einer Community eingesetzt wird, die aus der Softwareentwicklung kommt, hat *R* seinen Ursprung in der statistischen und wissenschaftlichen Community und bietet sehr vielfältige Möglichkeiten für (explorative) Datenanalyse und statistische Methoden. Zu den letzteren kann man im weiteren Sinne auch Methoden des maschinellen Lernens zählen.
+
+
+
+## Explorative Datenanalyse
+
+Wenn man eine neue Datenquelle erschließen möchte, bestehen die ersten Schritte aus der *explorativen Datenanalye*. Hierbei geht es darum, ein Verständnis für die Daten zu bekommen und insbesondere Fehler und Auffälligkeiten zu entdecken.
+
+Wir laden zunächst die Immobiliendaten über ein *R*-Paket:
+```{r}
+library(AmesHousing)
+```
+
+Die Daten werden wir unter der Bezeichnung `raw` weiter untersuchen:
+```{r}
+raw <- ames_raw
+```
+
+
+Um uns einen ersten Eindruck von den Daten zu verschaffen, benutzen wir die Funktion `r glimpse` aus dem `dplyr`-Paket. Dieses Paket ist grundsätzlich eine gute Wahl für die Datenanalyse, weil es zahlreiche recht intuitiv anwendbare Funktionen für Datentransformationen, Datenfilterung und -aggregation bietet.
+
+```{r}
+library(dplyr)
+
+glimpse(raw)
+```
+
+Aus dieser Übersicht erfahren wir schon eine ganze Menge:
+* die Zahl der Datensätze
+* die Zahl der Merkmale
+* die Namen der Merkmale 
+* die Datentypen der Merkmale
+* eine Vorschau auf die Merksmalsausprägungen.
+
+    **Aufgabe**
+    Was bedeuten die Ausprägungen *NA* für die Variable *Alley*. 
+
+
+    **Aufgabe**
+    Was bedeutet die Typkennzeichnung `fct` in der Ausgabe von `glimpse`? Was unterscheidet eine *kategorielle* Variable von numerischen? Was wäre der Unterschied, wenn die Variable *Heating* als Zeichenkette (`char` bzw. `character`) abgebildet würde?
+    
+Mit `glimpse` konnten wir einen ersten Eindruck der Daten gewinnen. Die zahlreichen Einzelwerte bieten aber noch keinen guten Überblick. Dafür ist eine stärker aggregierte Darstellung besser geeignet. Das Paket `dlookr` hilft dabei:
+```{r}
+library(dlookr)
+```
+
+Angewandt auf unsere Immobiliendaten erhalten wir:
+```{r}
+diagnose(raw)
+```
+
+
+
+
+Aus der Dokumentation zu dem Paket, die man mittels
+```{r}
+??AmesHousing
+```
+
+aufrufen kann, erfahren wir, dass wir mittels der Funktion `r make_ames` eine schon etwas aufbereitete Datenbasis erhalten können:
+
+```{r}
+data <- make_ames()
+```
+
+
+
+
+
+## Notizen
+
+Data Doku: http://jse.amstat.org/v19n3/decock/DataDocumentation.txt
+
+GeoLokationen im Artikel http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html
+
+
+
+
+
+
+
 
 
 ## Colinearity
