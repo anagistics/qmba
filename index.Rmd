@@ -9,7 +9,7 @@ output:
   bookdown::pdf_book:
     keep_tex: yes
 documentclass: book
-bibliography: ["citations.bib"]
+bibliography: ["citation.bib"]
 biblio-style: "apalike"
 link-citations: true
 ---
