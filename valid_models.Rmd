@@ -54,7 +54,7 @@ raw <- ames_raw
 ```
 
 
-Um uns einen ersten Eindruck von den Daten zu verschaffen, benutzen wir die Funktion `r glimpse` aus dem `dplyr`-Paket. Dieses Paket ist grundsätzlich eine gute Wahl für die Datenanalyse, weil es zahlreiche recht intuitiv anwendbare Funktionen für Datentransformationen, Datenfilterung und -aggregation bietet.
+Um uns einen ersten Eindruck von den Daten zu verschaffen, benutzen wir die Funktion `glimpse` aus dem `dplyr`-Paket. Dieses Paket ist grundsätzlich eine gute Wahl für die Datenanalyse, weil es zahlreiche recht intuitiv anwendbare Funktionen für Datentransformationen, Datenfilterung und -aggregation bietet.
 
 ```{r}
 library(dplyr)
@@ -63,6 +63,7 @@ glimpse(raw)
 ```
 
 Aus dieser Übersicht erfahren wir schon eine ganze Menge:
+
 * die Zahl der Datensätze
 * die Zahl der Merkmale
 * die Namen der Merkmale 
@@ -86,6 +87,44 @@ Angewandt auf unsere Immobiliendaten erhalten wir:
 diagnose(raw)
 ```
 
+        **Aufgabe**
+        * Was können Sie aus der *unique_rate* von 1 für *PID* ableiten? 
+        * Der Wert *missing_percent* für die Variable *Alley* ist sehr hoch: Liegt hier evtl. ein Problem bei der Datenerfassung vor?
+        * Was sagt Ihnen der Wert für *missing_count* für die Variable *Garage Finish*?
+        
+Wir können zu numerischen Werten mittels der Funktion `diagnose_numeric` mehr Informationen zu den Variablen erhalten, denen ein numerischer Datentyp zu Grunde liegt:
+
+```{r}
+diagnose_numeric(raw)
+```
+
+Für kategorielle Variablen lassen sich keine sinnvollen Quantile und auch kein Mittelwert angeben. Hier sieht die Zusammenfassung für die Variable *MS Zoning* folgendermaßen aus:
+```{r}
+diagnose_category(raw, `MS Zoning`)
+```
+
+*R* bietet übrigens standardmäßig, d.h. ohne weitere Pakete zu laden, die Funktion `summary`, die eine kompakte Übersicht über einen Datensatz bietet:
+```{r}
+summary(raw)
+```
+
+Aber man sieht schon deutlich den Unterschied: Die Ausgabe über die Funktionen des Pakets `dlookr` ist übersichtlicher und auch leichter weiterzuverarbeiten.
+
+Die obigen Tabellen bieten konkrete Information und man kann bspw. über den Vergleich des Durchschnitts mit dem Median einen ersten Eindruck der Verteilung der Werte bekommen. Weiterhin wichtig ist die Spalte *outlier*, die anzeigt, wie viele Ausreißer für die jeweilige Variable erkannt wurden. Die Definition, welche Werte als Ausreißer angesehen werden, gleicht der Definition von Ausreißern für *Boxplots* (siehe auch die Dokumentation zur Funktion `boxplot` mittels `?boxplot`).
+
+Tatsächlich ist es sehr hilfreich, Daten und ihre Verteilungen zum besseren Verständnis zu visualisieren. Die Ausreißer der Variable *SalePrice* können wir folgendermaßen untersuchen:
+
+```{r}
+plot_outlier(raw, SalePrice)
+```
+
+Wie oben erwähnt, können kategorielle Variablen nicht gut numerisch zusammengefasst werden. Die Verteilung der Merkmalsausprägungen ist hingegen sehr wertvoll, weil schnell die häufigen und seltenen Ausprägungen erfasst werden können. Ein einfaches *Histogramm* lässt sich mit dem Paket `ggplot2` folgendermaßen erstellen:
+```{r}
+library(ggplot2)
+
+raw %>% ggplot(aes(x = `MS Zoning`)) + geom_histogram(stat = "count")
+```
+
 
 
 
@@ -94,7 +133,7 @@ Aus der Dokumentation zu dem Paket, die man mittels
 ??AmesHousing
 ```
 
-aufrufen kann, erfahren wir, dass wir mittels der Funktion `r make_ames` eine schon etwas aufbereitete Datenbasis erhalten können:
+aufrufen kann, erfahren wir, dass wir mittels der Funktion `make_ames` eine schon etwas aufbereitete Datenbasis erhalten können:
 
 ```{r}
 data <- make_ames()
