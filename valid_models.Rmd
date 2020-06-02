@@ -77,6 +77,8 @@ Aus dieser Übersicht erfahren wir schon eine ganze Menge:
     **Aufgabe**
     Was bedeutet die Typkennzeichnung `fct` in der Ausgabe von `glimpse`? Was unterscheidet eine *kategorielle* Variable von numerischen? Was wäre der Unterschied, wenn die Variable *Heating* als Zeichenkette (`char` bzw. `character`) abgebildet würde?
     
+## Erstes Verständnis der Daten
+
 Mit `glimpse` konnten wir einen ersten Eindruck der Daten gewinnen. Die zahlreichen Einzelwerte bieten aber noch keinen guten Überblick. Dafür ist eine stärker aggregierte Darstellung besser geeignet. Das Paket `dlookr` hilft dabei:
 ```{r}
 library(dlookr)
@@ -89,14 +91,17 @@ diagnose(raw)
 
         **Aufgabe**
         * Was können Sie aus der *unique_rate* von 1 für *PID* ableiten? 
-        * Der Wert *missing_percent* für die Variable *Alley* ist sehr hoch: Liegt hier evtl. ein Problem bei der Datenerfassung vor?
-        * Was sagt Ihnen der Wert für *missing_count* für die Variable *Garage Finish*?
+        * Was sagt Ihnen die *unique_rate* von 16 für die Variable *MS SubClass*?
         
+### Zusammenfassung numerischer Daten
+
 Wir können zu numerischen Werten mittels der Funktion `diagnose_numeric` mehr Informationen zu den Variablen erhalten, denen ein numerischer Datentyp zu Grunde liegt:
 
 ```{r}
 diagnose_numeric(raw)
 ```
+
+### Zusammenfassung kategorieller Daten
 
 Für kategorielle Variablen lassen sich keine sinnvollen Quantile und auch kein Mittelwert angeben. Hier sieht die Zusammenfassung für die Variable *MS Zoning* folgendermaßen aus:
 ```{r}
@@ -109,6 +114,70 @@ summary(raw)
 ```
 
 Aber man sieht schon deutlich den Unterschied: Die Ausgabe über die Funktionen des Pakets `dlookr` ist übersichtlicher und auch leichter weiterzuverarbeiten.
+
+## Fehlende Werte
+
+In vielen Datensätzen, die aus unternehmensinternen IT-Systemen bezogen werden, finden sich Datensätze mit Merkmalen ohne Ausprägung. Es gibt keine pauschale Vorgehensweise, die bzgl. der Behandlung dieser fehlenden Werte immer richtig ist. Zunächst kann es sich lohnen die Spalten (Variablen) in den Datensätzen zu identifizieren, die viele fehlende Werte aufweisen.
+
+Gehen wir nochmal zurück zur obigen Diagnose:
+```{r}
+diagnose(raw)
+```
+
+Die Spalte *missing_percent* gibt den Anteil fehlender Werte an und wir können die Spalten mit häufig fehlenden Werten über eine Sortierung erkennen:
+```{r}
+diagnose(raw) %>% arrange(desc(missing_percent))
+```
+
+Deutlich wird, dass die Variable *Pool QC* wohl häufig keine Werte enthält. Eine Vermutung wäre, dass diese Variable etwas mit dem Vorhandensein eines Pools zu tun hat und dass fehlende Werte schlichtweg bedeuten, dass die Immobilie keinen Pool hat. Etwas anders sieht es bei der Variable *Bsmt Cond* aus. Diese fehlt in knapp 3% aller Fälle -- ebenso wie andere Variablen mit ähnlichem Namen. Vielleicht ist es hier ähnlich wie bei der Variablen *Pool QC* und nicht vorhandene Werte bedeuten einen fehlenden Keller. Aber kann es sein, dass bei ca. 3% aller Immobilien kein Keller vorhanden ist? Um dies besser zu verstehen, müsste man mehr über die Bauweise in der Region in Erfahrung bringen: Vielleicht wurden früher bei der Erfassung der Immobiliendaten keine Angaben zum Keller aufgenommen und die Daten fehlen schlichtweg für ältere Immobilien?
+
+Unabhängig davon, was hier im konkreten Fall Ursache für die fehlenden Werte ist: Bei der explorativen Datenanalyse müssen wir stets berücksichtigen, dass das Fehlen selbst auch eine fachliche Information (hier: *kein Pool vorhanden*) bedeuten kann und nicht immer auf Fehler bei der Datenaufnahme oder -übertragung zurückzuführen ist bzw. mit Änderungen in der Erfassungssystematik zu tun haben muss.
+
+Wir haben durch die obige Analyse schon den Verdacht, dass fehlende Werte für mehrere Variablen in typischen Kombinationen vorkommen: Wenn es keinen Keller gibt oder keine Werte erfasst wurden, dann fehlen wahrscheinlich Werte für alle diesbezüglichen Variablen. Um das zu untersuchen, können wir das Paket `VIM` verwenden:
+
+```{r}
+library(VIM)
+```
+
+Wenden wir es auf unsere Daten an, wobei wir uns auf die Variablen beschränken, die laut vorangehender Analyse fehlende Werte aufweisen:
+```{r}
+missing_cols <- diagnose(raw) %>% filter(missing_percent > 0.0) %>% pull(variables)
+
+raw %>% select_at(vars(all_of(missing_cols))) %>% aggr(combined = TRUE, sortVars = TRUE, cex.axis = 0.5)
+```
+
+Die für diese Untersuchung gewählte Beschränkung auf Variablen, die fehlende Werte aufweisen, birgt allerdings ein Problem: Auf diese Weise entgehen uns Zusammenhänge zwischen fehlenden Werten und anderen Variablen, die möglicherweise auf einen systematischen Zusammenhang schließen lassen. Vielleicht fehlen ja die Angaben zu Kellern für Gebäude bestimmter Jahrgänge oder aus bestimmten Gebieten, deren geologischen Eigenschaften keinen Kellerbau zulassen?
+
+Gehen wir einem konkreten Verdacht nach, dass fehlende Werte für die *Bsmt*-Variablen mit der Lage der Immobilie zu tun haben. Hierfür können wir die Variable *Neighborhood* und die Variable *Bsmt Cond* verwenden:
+
+```{r}
+raw %>% select(Neighborhood, `Bsmt Cond`) %>% 
+    mutate(has_basement = !is.na(`Bsmt Cond`)) %>% 
+    count(Neighborhood, has_basement) %>% 
+    ggplot(aes(x = Neighborhood, y = n, fill = has_basement)) +
+    geom_col(position = "fill") + 
+    coord_flip() +
+    scale_y_continuous(labels = scales::percent)
+
+```
+
+Anscheinend ist der Verdacht eines geographischen Zusammenhangs nicht unbegründet und das hilft uns, die Daten besser zu verstehen.
+
+### Systematisierung der Ursachen fehlender Werte
+Missing completely at random (MCAR)
+Under MCAR there is no systematic pattern in the location of the missing data points in the dataset: they occur entirely at random. Formally, this means that the probability of an observation being absent depends neither on the values of other variables nor on its own values. In this case, dropping incomplete observations would not introduce bias to the results of the subsequent analysis.
+Example: Temperature is continuously measured by a sensor that collects the data and sends them via the Internet to a database. Due to unknown reasons, the Internet connection breaks sometimes.
+
+Missing at random (MAR)
+Under MAR, the probability of a particular observation being missing is still independent on its own values, but it does depend on the values of other variables. In this case, removing incomplete observations makes the sample less representative.
+Example: Some of the night-hours data are missing due to the sensor's maintenance works, which are always carried out overnight.
+
+Missing not at random (MNAR)
+Under MNAR, the probability of an observation being missing depends on its own unobserved values. In this case, again, dropping incomplete data leads to a biased analysis.
+Example: Sensor freezes in -20 degrees Celcius and does not measure temperature below this value.
+
+
+## Ausreisser identifizieren
 
 Die obigen Tabellen bieten konkrete Information und man kann bspw. über den Vergleich des Durchschnitts mit dem Median einen ersten Eindruck der Verteilung der Werte bekommen. Weiterhin wichtig ist die Spalte *outlier*, die anzeigt, wie viele Ausreißer für die jeweilige Variable erkannt wurden. Die Definition, welche Werte als Ausreißer angesehen werden, gleicht der Definition von Ausreißern für *Boxplots* (siehe auch die Dokumentation zur Funktion `boxplot` mittels `?boxplot`).
 
