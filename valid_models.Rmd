@@ -37,6 +37,18 @@ Hier die Erklärung, wie das funktioniert
 
 Neben Python ist *R* eine der derzeit populärsten Sprachen für Datenanalye, Statistik und maschinellem Lernen. Während Python als vielseitige Programmiersprache gerne von einer Community eingesetzt wird, die aus der Softwareentwicklung kommt, hat *R* seinen Ursprung in der statistischen und wissenschaftlichen Community und bietet sehr vielfältige Möglichkeiten für (explorative) Datenanalyse und statistische Methoden. Zu den letzteren kann man im weiteren Sinne auch Methoden des maschinellen Lernens zählen.
 
+## Lösungskonzeption
+
+wie soll die Lösung am Ende aussehen? Wie kommt man dahin?
+welche Daten wird man brauchen? Welche Visualisierungen?
+Haben wir Hypothesen?
+
+## Datenzugang
+
+### Datenschutz DSGVO
+
+Rechtsgrundlage und Verarbeitungszweck
+Anonymisierung und Pseudonymisierung
 
 
 ## Explorative Datenanalyse
@@ -77,7 +89,7 @@ Aus dieser Übersicht erfahren wir schon eine ganze Menge:
     **Aufgabe**
     Was bedeutet die Typkennzeichnung `fct` in der Ausgabe von `glimpse`? Was unterscheidet eine *kategorielle* Variable von numerischen? Was wäre der Unterschied, wenn die Variable *Heating* als Zeichenkette (`char` bzw. `character`) abgebildet würde?
     
-## Erstes Verständnis der Daten
+### Erstes Verständnis der Daten
 
 Mit `glimpse` konnten wir einen ersten Eindruck der Daten gewinnen. Die zahlreichen Einzelwerte bieten aber noch keinen guten Überblick. Dafür ist eine stärker aggregierte Darstellung besser geeignet. Das Paket `dlookr` hilft dabei:
 ```{r}
@@ -93,7 +105,7 @@ diagnose(raw)
         * Was können Sie aus der *unique_rate* von 1 für *PID* ableiten? 
         * Was sagt Ihnen die *unique_rate* von 16 für die Variable *MS SubClass*?
         
-### Zusammenfassung numerischer Daten
+#### Zusammenfassung numerischer Daten
 
 Wir können zu numerischen Werten mittels der Funktion `diagnose_numeric` mehr Informationen zu den Variablen erhalten, denen ein numerischer Datentyp zu Grunde liegt:
 
@@ -101,7 +113,7 @@ Wir können zu numerischen Werten mittels der Funktion `diagnose_numeric` mehr I
 diagnose_numeric(raw)
 ```
 
-### Zusammenfassung kategorieller Daten
+#### Zusammenfassung kategorieller Daten
 
 Für kategorielle Variablen lassen sich keine sinnvollen Quantile und auch kein Mittelwert angeben. Hier sieht die Zusammenfassung für die Variable *MS Zoning* folgendermaßen aus:
 ```{r}
@@ -115,7 +127,7 @@ summary(raw)
 
 Aber man sieht schon deutlich den Unterschied: Die Ausgabe über die Funktionen des Pakets `dlookr` ist übersichtlicher und auch leichter weiterzuverarbeiten.
 
-## Fehlende Werte
+### Fehlende Werte
 
 In vielen Datensätzen, die aus unternehmensinternen IT-Systemen bezogen werden, finden sich Datensätze mit Merkmalen ohne Ausprägung. Es gibt keine pauschale Vorgehensweise, die bzgl. der Behandlung dieser fehlenden Werte immer richtig ist. Zunächst kann es sich lohnen die Spalten (Variablen) in den Datensätzen zu identifizieren, die viele fehlende Werte aufweisen.
 
@@ -163,21 +175,35 @@ raw %>% select(Neighborhood, `Bsmt Cond`) %>%
 
 Anscheinend ist der Verdacht eines geographischen Zusammenhangs nicht unbegründet und das hilft uns, die Daten besser zu verstehen.
 
-### Systematisierung der Ursachen fehlender Werte
-Missing completely at random (MCAR)
-Under MCAR there is no systematic pattern in the location of the missing data points in the dataset: they occur entirely at random. Formally, this means that the probability of an observation being absent depends neither on the values of other variables nor on its own values. In this case, dropping incomplete observations would not introduce bias to the results of the subsequent analysis.
-Example: Temperature is continuously measured by a sensor that collects the data and sends them via the Internet to a database. Due to unknown reasons, the Internet connection breaks sometimes.
+#### Systematisierung der Ursachen fehlender Werte
 
-Missing at random (MAR)
-Under MAR, the probability of a particular observation being missing is still independent on its own values, but it does depend on the values of other variables. In this case, removing incomplete observations makes the sample less representative.
-Example: Some of the night-hours data are missing due to the sensor's maintenance works, which are always carried out overnight.
+In @Sauer2019 (und auch an anderen Stellen) werden die Ursachen für fehlende Werte systematisch beschrieben. Im wesentlichen werden drei verschiedene Fälle unterschieden:
 
-Missing not at random (MNAR)
-Under MNAR, the probability of an observation being missing depends on its own unobserved values. In this case, again, dropping incomplete data leads to a biased analysis.
-Example: Sensor freezes in -20 degrees Celcius and does not measure temperature below this value.
+* Missing completely at random (MCAR),
+* Missing at random (MAR),
+* Missing not at random (MNAR)
 
+Der erste Fall (MCAR) liegt vor, wenn keine bekannte bzw. erkennbare Ursache für das Fehlen vorliegen, d.h. das Fehlen ist insbesondere nicht auf die Ausprägungen anderer Variablen für dieselbe Instanz (dieselbe Beobachtung) zurückzuführen. Typische Ursachen hierfür wären fehlende Daten aufgrund von technischen Übermittlungsfehlern, die nichts mit der Beobachtung selbst zu tun haben. 
 
-## Ausreisser identifizieren
+Das andere Extrem in dieser Einteilung ist die Klasse MNAR: Hier hängt die Wahrscheinlichkeit für das Fehlen der Ausprägung einer Variablen für eine Beobachtung von der Ausprägung selbst ab. Die Variable *Lot Frontage* (Bedeutung *Linear feet of street connected to property*) aus unserem Immobiliendatensatz würde hier passen: Die Ausprägung fehlt im Datensatz, sobald die wahre Ausprägung 0 lautet, weil das Grundstück nicht an eine Straße angrenzt.
+
+Dazwischen ist die Klasse MAR. Die Ursache für fehlende Werte liegt hier nicht in der Ausprägung der Variablen selbst, sondern hängt mit anderen Variablen zusammen. Die Variable *Garage Yr Blt* (Bedeutung: Baujahr der Garage) fehlt bspw. dann, wenn es keine Garage gibt. Das Fehlen liegt aber nicht am Baujahr selbst.
+
+Die Systematisierung ist kein Selbstzweck. Wenn wir wissen, dass der MNAR-Fall vorliegt, sollten wir über eine neue Variable, die wir selber einführen, unser Wissen über die Gründe für das Fehlen explizit in unseren Datensatz aufnehmen. Im Beispiel könnten wir eine kategorielle Variable *street_access* mit den Werten 0 für *keinen Straßenzugang* und 1 für *mit Straßenzugang* einführen. 
+Im Fall von MCAR kann man die fehlenden Werte evtl. gezielt ergänzen. Dieses Vorgehen wird *Imputation* genannt und es gibt verschiedene Verfahren dafür. Andererseits kann man die entsprechenden Instanzen evtl. auch löschen, d.h. für die weitere Betrachtung ignorieren, weil ihr Fehlen keine statistischen Verzerrungen einführt. 
+Bei fehlenden Werten nach MAR würde das Löschen von Instanzen allerdings zu statistischen Verzerrungen führen. Im Beispiel hier würde man alle Immobilien ohne Garage entfernen, wenn man die Instanzen löscht, für die die Variable *Garage Yr Blt* keine Ausprägung hat. Damit hätte man kein repräsentatives Bild des Immobilienmarkts mehr.
+
+##### Fehlende Werte in der Praxis
+
+9999, " ", "-", "", usw.
+
+#### Umgang mit fehlenden Werten
+
+komplex,
+
+mice @VanBuuren2011
+
+### Ausreisser identifizieren
 
 Die obigen Tabellen bieten konkrete Information und man kann bspw. über den Vergleich des Durchschnitts mit dem Median einen ersten Eindruck der Verteilung der Werte bekommen. Weiterhin wichtig ist die Spalte *outlier*, die anzeigt, wie viele Ausreißer für die jeweilige Variable erkannt wurden. Die Definition, welche Werte als Ausreißer angesehen werden, gleicht der Definition von Ausreißern für *Boxplots* (siehe auch die Dokumentation zur Funktion `boxplot` mittels `?boxplot`).
 
@@ -193,6 +219,41 @@ library(ggplot2)
 
 raw %>% ggplot(aes(x = `MS Zoning`)) + geom_histogram(stat = "count")
 ```
+
+### Besondere Werte
+
+* nach fehlenden Werten und Ausreißern: Auch "mittendrin" komische Werte möglich
+
+
+## Informationsbeiträge von Variablen
+
+### Beitrag einzelner Variablen
+
+* Spalten mit wenig Varianz sind nicht wichtig
+* mit kompletter Varianz sind Schlüssel
+* Faktoren mit vielen Levels könnte man komprimieren
+
+### Zusammenhang zwischen Variablen: Korrelation
+
+
+
+# Datenvorverarbeitung
+
+## Transformationen
+
+## Variablen entfernen
+
+## Instanzen entfernen
+
+# Modellbildung
+
+## Trainings- und Testdaten
+
+## Modell erstellen
+
+# Modellinterpretation
+
+
 
 
 
@@ -218,8 +279,7 @@ Data Doku: http://jse.amstat.org/v19n3/decock/DataDocumentation.txt
 
 GeoLokationen im Artikel http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html
 
-
-
+Beispielanalyse: http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html
 
 
 
