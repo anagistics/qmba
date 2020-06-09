@@ -63,8 +63,10 @@ library(AmesHousing)
 Die Daten werden wir unter der Bezeichnung `raw` weiter untersuchen:
 ```{r}
 raw <- ames_raw
+names(raw) <- make.names(names(raw))
 ```
 
+Die zweite Zeile im obigen Codeblock dient dazu, die Bezeichner der Variablen (Spalten des Datensatzes) so umzuwandeln, dass keine Leerzeichen mehr enthalten sind, die uns sonst an späterer Stelle stören würden.
 
 Um uns einen ersten Eindruck von den Daten zu verschaffen, benutzen wir die Funktion `glimpse` aus dem `dplyr`-Paket. Dieses Paket ist grundsätzlich eine gute Wahl für die Datenanalyse, weil es zahlreiche recht intuitiv anwendbare Funktionen für Datentransformationen, Datenfilterung und -aggregation bietet.
 
@@ -103,7 +105,7 @@ diagnose(raw)
 
         **Aufgabe**
         * Was können Sie aus der *unique_rate* von 1 für *PID* ableiten? 
-        * Was sagt Ihnen die *unique_rate* von 16 für die Variable *MS SubClass*?
+        * Was sagt Ihnen die *unique_rate* von 16 für die Variable *MS.SubClass*?
         
 #### Zusammenfassung numerischer Daten
 
@@ -115,9 +117,9 @@ diagnose_numeric(raw)
 
 #### Zusammenfassung kategorieller Daten
 
-Für kategorielle Variablen lassen sich keine sinnvollen Quantile und auch kein Mittelwert angeben. Hier sieht die Zusammenfassung für die Variable *MS Zoning* folgendermaßen aus:
+Für kategorielle Variablen lassen sich keine sinnvollen Quantile und auch kein Mittelwert angeben. Hier sieht die Zusammenfassung für die Variable *MS.Zoning* folgendermaßen aus:
 ```{r}
-diagnose_category(raw, `MS Zoning`)
+diagnose_category(raw, MS.Zoning)
 ```
 
 *R* bietet übrigens standardmäßig, d.h. ohne weitere Pakete zu laden, die Funktion `summary`, die eine kompakte Übersicht über einen Datensatz bietet:
@@ -141,7 +143,7 @@ Die Spalte *missing_percent* gibt den Anteil fehlender Werte an und wir können 
 diagnose(raw) %>% arrange(desc(missing_percent))
 ```
 
-Deutlich wird, dass die Variable *Pool QC* wohl häufig keine Werte enthält. Eine Vermutung wäre, dass diese Variable etwas mit dem Vorhandensein eines Pools zu tun hat und dass fehlende Werte schlichtweg bedeuten, dass die Immobilie keinen Pool hat. Etwas anders sieht es bei der Variable *Bsmt Cond* aus. Diese fehlt in knapp 3% aller Fälle -- ebenso wie andere Variablen mit ähnlichem Namen. Vielleicht ist es hier ähnlich wie bei der Variablen *Pool QC* und nicht vorhandene Werte bedeuten einen fehlenden Keller. Aber kann es sein, dass bei ca. 3% aller Immobilien kein Keller vorhanden ist? Um dies besser zu verstehen, müsste man mehr über die Bauweise in der Region in Erfahrung bringen: Vielleicht wurden früher bei der Erfassung der Immobiliendaten keine Angaben zum Keller aufgenommen und die Daten fehlen schlichtweg für ältere Immobilien?
+Deutlich wird, dass die Variable *Pool.QC* wohl häufig keine Werte enthält. Eine Vermutung wäre, dass diese Variable etwas mit dem Vorhandensein eines Pools zu tun hat und dass fehlende Werte schlichtweg bedeuten, dass die Immobilie keinen Pool hat. Etwas anders sieht es bei der Variable *Bsmt.Cond* aus. Diese fehlt in knapp 3% aller Fälle -- ebenso wie andere Variablen mit ähnlichem Namen. Vielleicht ist es hier ähnlich wie bei der Variablen *Pool.QC* und nicht vorhandene Werte bedeuten einen fehlenden Keller. Aber kann es sein, dass bei ca. 3% aller Immobilien kein Keller vorhanden ist? Um dies besser zu verstehen, müsste man mehr über die Bauweise in der Region in Erfahrung bringen: Vielleicht wurden früher bei der Erfassung der Immobiliendaten keine Angaben zum Keller aufgenommen und die Daten fehlen schlichtweg für ältere Immobilien?
 
 Unabhängig davon, was hier im konkreten Fall Ursache für die fehlenden Werte ist: Bei der explorativen Datenanalyse müssen wir stets berücksichtigen, dass das Fehlen selbst auch eine fachliche Information (hier: *kein Pool vorhanden*) bedeuten kann und nicht immer auf Fehler bei der Datenaufnahme oder -übertragung zurückzuführen ist bzw. mit Änderungen in der Erfassungssystematik zu tun haben muss.
 
@@ -160,11 +162,13 @@ raw %>% select_at(vars(all_of(missing_cols))) %>% aggr(combined = TRUE, sortVars
 
 Die für diese Untersuchung gewählte Beschränkung auf Variablen, die fehlende Werte aufweisen, birgt allerdings ein Problem: Auf diese Weise entgehen uns Zusammenhänge zwischen fehlenden Werten und anderen Variablen, die möglicherweise auf einen systematischen Zusammenhang schließen lassen. Vielleicht fehlen ja die Angaben zu Kellern für Gebäude bestimmter Jahrgänge oder aus bestimmten Gebieten, deren geologischen Eigenschaften keinen Kellerbau zulassen?
 
-Gehen wir einem konkreten Verdacht nach, dass fehlende Werte für die *Bsmt*-Variablen mit der Lage der Immobilie zu tun haben. Hierfür können wir die Variable *Neighborhood* und die Variable *Bsmt Cond* verwenden:
+Gehen wir einem konkreten Verdacht nach, dass fehlende Werte für die *Bsmt*-Variablen mit der Lage der Immobilie zu tun haben. Hierfür können wir die Variable *Neighborhood* und die Variable *Bsmt.Cond* verwenden:
 
 ```{r}
-raw %>% select(Neighborhood, `Bsmt Cond`) %>% 
-    mutate(has_basement = !is.na(`Bsmt Cond`)) %>% 
+library(ggplot2)
+
+raw %>% dplyr::select(Neighborhood, Bsmt.Cond) %>% 
+    mutate(has_basement = !is.na(Bsmt.Cond)) %>% 
     count(Neighborhood, has_basement) %>% 
     ggplot(aes(x = Neighborhood, y = n, fill = has_basement)) +
     geom_col(position = "fill") + 
@@ -185,27 +189,112 @@ In @Sauer2019 (und auch an anderen Stellen) werden die Ursachen für fehlende We
 
 Der erste Fall (MCAR) liegt vor, wenn keine bekannte bzw. erkennbare Ursache für das Fehlen vorliegen, d.h. das Fehlen ist insbesondere nicht auf die Ausprägungen anderer Variablen für dieselbe Instanz (dieselbe Beobachtung) zurückzuführen. Typische Ursachen hierfür wären fehlende Daten aufgrund von technischen Übermittlungsfehlern, die nichts mit der Beobachtung selbst zu tun haben. 
 
-Das andere Extrem in dieser Einteilung ist die Klasse MNAR: Hier hängt die Wahrscheinlichkeit für das Fehlen der Ausprägung einer Variablen für eine Beobachtung von der Ausprägung selbst ab. Die Variable *Lot Frontage* (Bedeutung *Linear feet of street connected to property*) aus unserem Immobiliendatensatz würde hier passen: Die Ausprägung fehlt im Datensatz, sobald die wahre Ausprägung 0 lautet, weil das Grundstück nicht an eine Straße angrenzt.
+Das andere Extrem in dieser Einteilung ist die Klasse MNAR: Hier hängt die Wahrscheinlichkeit für das Fehlen der Ausprägung einer Variablen für eine Beobachtung von der Ausprägung selbst ab. Die Variable *Lot.Frontage* (Bedeutung *Linear feet of street connected to property*) aus unserem Immobiliendatensatz würde hier passen: Die Ausprägung fehlt im Datensatz, sobald die wahre Ausprägung 0 lautet, weil das Grundstück nicht an eine Straße angrenzt.
 
-Dazwischen ist die Klasse MAR. Die Ursache für fehlende Werte liegt hier nicht in der Ausprägung der Variablen selbst, sondern hängt mit anderen Variablen zusammen. Die Variable *Garage Yr Blt* (Bedeutung: Baujahr der Garage) fehlt bspw. dann, wenn es keine Garage gibt. Das Fehlen liegt aber nicht am Baujahr selbst.
+Dazwischen ist die Klasse MAR. Die Ursache für fehlende Werte liegt hier nicht in der Ausprägung der Variablen selbst, sondern hängt mit anderen Variablen zusammen. Die Variable *Garage.Yr.Blt* (Bedeutung: Baujahr der Garage) fehlt bspw. dann, wenn es keine Garage gibt. Das Fehlen liegt aber nicht am Baujahr selbst.
 
 Die Systematisierung ist kein Selbstzweck. Wenn wir wissen, dass der MNAR-Fall vorliegt, sollten wir über eine neue Variable, die wir selber einführen, unser Wissen über die Gründe für das Fehlen explizit in unseren Datensatz aufnehmen. Im Beispiel könnten wir eine kategorielle Variable *street_access* mit den Werten 0 für *keinen Straßenzugang* und 1 für *mit Straßenzugang* einführen. 
 Im Fall von MCAR kann man die fehlenden Werte evtl. gezielt ergänzen. Dieses Vorgehen wird *Imputation* genannt und es gibt verschiedene Verfahren dafür. Andererseits kann man die entsprechenden Instanzen evtl. auch löschen, d.h. für die weitere Betrachtung ignorieren, weil ihr Fehlen keine statistischen Verzerrungen einführt. 
-Bei fehlenden Werten nach MAR würde das Löschen von Instanzen allerdings zu statistischen Verzerrungen führen. Im Beispiel hier würde man alle Immobilien ohne Garage entfernen, wenn man die Instanzen löscht, für die die Variable *Garage Yr Blt* keine Ausprägung hat. Damit hätte man kein repräsentatives Bild des Immobilienmarkts mehr.
+Bei fehlenden Werten nach MAR würde das Löschen von Instanzen allerdings zu statistischen Verzerrungen führen. Im Beispiel hier würde man alle Immobilien ohne Garage entfernen, wenn man die Instanzen löscht, für die die Variable *Garage.Yr.Blt* keine Ausprägung hat. Damit hätte man kein repräsentatives Bild des Immobilienmarkts mehr.
 
 ##### Fehlende Werte in der Praxis
 
-9999, " ", "-", "", usw.
+In der Praxis, gerade bei der Verwendung von Daten aus operativen IT-Systemen, wird das Fehlen von Werten oftmals durch besondere Ausprägungen codiert. Ein Grund dafür ist, dass die Benutzeroberfläche der IT-Systeme Eingaben in den entsprechenden Feldern erwartet, die der oder die SachbearbeiterIn im Moment der Eingabe nicht leisten kann. In numerischen Feldern wird dann gerne ein Wert wie 99 oder 999 eingetragen, in Textfeldern wird ein Leerzeichen "\u237d", ein "-" oder "." eingetragen. 
 
 #### Umgang mit fehlenden Werten
 
-komplex,
+Wie auch in @Sauer2019 dargestellt wird, ist der richtige Umgang mit fehlenden Werten ein komplexes Thema. Simple Lösungen bestehen darin, die fehlenden Werte durch den Mittelwert der (numerischen) Ausprägungen der Variable zu ersetzen. Bei kategoriellen Variablen kann man analog dazu den Modalwert, d.h. die häufigste Ausprägung, als Ersatzwert verwenden. Aber beide Vorgehen sind stark vereinfachend und können zu unrealistischen Merkmalskombinationen für die betroffenen Beobachtungen führen. Technisch kann so eine Ersetzung in R so umgesetzt werden:
+```{r}
+library(tidyr)
 
-mice @VanBuuren2011
+completed <- raw %>% mutate_if(is.numeric, ~ replace_na(., mean(., na.rm = TRUE)))
+```
+
+Die Funktion `replace_na` aus dem `tidyr`-Paket ersetzt *NA*-Werte durch den im zweiten Argument angegebenen Wert.
+
+Um andere Imputationsstrategien kennenzulernen, wechseln wir zeitweise zu einem anderen Datensatz:
+```{r}
+library(MASS)
+glimpse(whiteside)
+```
+
+Der Datensatz passt zum Immobilienszenario, weil er den Zusammenhang zwischen Gasverbrauch, Außentemperatur und Gebäudeisolierung zeigt.
+
+```{r}
+ggplot(whiteside, aes(x = Temp, y = Gas)) + geom_point() + 
+    geom_smooth(method = "lm") + 
+    facet_wrap(~ Insul)
+```
+
+Für das Ausprobieren entfernen wir zufällig einen kleinen Teil der Messungen des Gasverbrauchs aus den Daten:
+
+```{r}
+set.seed(123)
+
+ws_mod <- whiteside %>% mutate(Gas = if_else(runif(nrow(whiteside)) < 0.15, NA_real_, Gas))
+```
+
+Im folgenden probieren wir aus, was passiert, wenn wir die  Imputationsstrategie *Imputation durch Mittelwert* wählen. Dazu verwenden wir das Paket `mice` (@VanBuuren2011).
+
+Die Imputation durch den Mittelwert für alle numerischen Spalten kann durch folgenden Funktionsaufruf erreicht werden:
+
+```{r} 
+library(mice)
+
+imp <- ws_mod %>% mice(method = "mean", m = 1, maxit = 1)
+```
+
+Das Ergebnis der Imputation können wir mit etwas Aufwand visualisieren (das hier geladene Paket `forcats` bietet Funktionen zur Bearbeitung von kategoriellen Variablen):
+```{r}
+library(forcats)
+
+tmp1 <- imp$imp$Gas %>% 
+    transmute(i = as.integer(row.names(.)),
+              value = `1`)
+
+tmp2 <- ws_mod %>% 
+    mutate(i = row_number()) %>% 
+    left_join(tmp1, by = "i") %>% 
+    arrange(i) %>% 
+    mutate(Gas = if_else(is.na(Gas), value, Gas), 
+           imputed = fct_rev(as.factor(!is.na(value))))
+    
+ggplot(tmp2, aes(x = Temp, y = Gas, color = imputed)) + 
+    geom_point() + facet_wrap(~ Insul)
+
+    
+```
+
+Aus fachlichen Gründen können wir davon ausgehen, dass es einen Zusammenhang zwischen Temperatur und Gasverbrauch gibt: Die Trendlinien oben legen das auch nahe.
+
+```{r}
+imp2 <- ws_mod %>% mice(method = "norm.predict", seed = 1, m = 1, print = FALSE)
+```
+
+Das Ergebnis dieser Imputation können wir auch wieder mit dem obigen Code visualisieren:
+```{r}
+tmp1 <- imp2$imp$Gas %>% 
+    transmute(i = as.integer(row.names(.)),
+              value = `1`)
+
+tmp2 <- ws_mod %>% 
+    mutate(i = row_number()) %>% 
+    left_join(tmp1, by = "i") %>% 
+    mutate(Gas = if_else(is.na(Gas), value, Gas), 
+           imputed = fct_rev(as.factor(!is.na(value))))
+    
+ggplot(tmp2, aes(x = Temp, y = Gas, color = imputed)) + 
+    geom_point() + facet_wrap(~ Insul)
+```
+
+Dieses Ergebnis sieht wesentlich plausibler aus als der erste Versuch auf Basis des Mittelwerts. 
+
 
 ### Ausreisser identifizieren
 
-Die obigen Tabellen bieten konkrete Information und man kann bspw. über den Vergleich des Durchschnitts mit dem Median einen ersten Eindruck der Verteilung der Werte bekommen. Weiterhin wichtig ist die Spalte *outlier*, die anzeigt, wie viele Ausreißer für die jeweilige Variable erkannt wurden. Die Definition, welche Werte als Ausreißer angesehen werden, gleicht der Definition von Ausreißern für *Boxplots* (siehe auch die Dokumentation zur Funktion `boxplot` mittels `?boxplot`).
+Wir kehren zurück zum *AmesHousing*-Datensatz.
+
+Die obigen Diagnosetabellen bieten konkrete Information und man kann bspw. über den Vergleich des Durchschnitts mit dem Median einen ersten Eindruck der Verteilung der Werte bekommen. Weiterhin wichtig ist die Spalte *outlier*, die anzeigt, wie viele Ausreißer für die jeweilige Variable erkannt wurden. Die Definition, welche Werte als Ausreißer angesehen werden, gleicht der Definition von Ausreißern für *Boxplots* (siehe auch die Dokumentation zur Funktion `boxplot` mittels `?boxplot`).
 
 Tatsächlich ist es sehr hilfreich, Daten und ihre Verteilungen zum besseren Verständnis zu visualisieren. Die Ausreißer der Variable *SalePrice* können wir folgendermaßen untersuchen:
 
@@ -215,19 +304,96 @@ plot_outlier(raw, SalePrice)
 
 Wie oben erwähnt, können kategorielle Variablen nicht gut numerisch zusammengefasst werden. Die Verteilung der Merkmalsausprägungen ist hingegen sehr wertvoll, weil schnell die häufigen und seltenen Ausprägungen erfasst werden können. Ein einfaches *Histogramm* lässt sich mit dem Paket `ggplot2` folgendermaßen erstellen:
 ```{r}
-library(ggplot2)
-
-raw %>% ggplot(aes(x = `MS Zoning`)) + geom_histogram(stat = "count")
+raw %>% ggplot(aes(x = MS.Zoning)) + geom_histogram(stat = "count")
 ```
 
-### Besondere Werte
+### Seltene Werte
 
-* nach fehlenden Werten und Ausreißern: Auch "mittendrin" komische Werte möglich
+Aus Histogrammen können wir ableiten, welche Werte je Variable sehr selten auftreten. Gerade bei der Analyse kategorieller Variablen stellt sich oft heraus, dass einige Ausprägungen sehr selten auftreten. Eine statistische Analyse auf Basis dieser Ausprägungen würde statistisch wertlos sein, da die Anzahl der Beobachtungen pro Ausprägung nicht für statistisch valide Aussagen ausreicht. Daher ist es empfehlenswert und üblich, seltene Ausprägungen zu Gruppen zusammenzufassen und eine neue Dummy-Ausprägung, bspw. *sonstige*, für diese einzuführen.
 
+Um eine vollständige Liste der kategoriellen Variablen zu erhalten, hilft die [Dokumentation des AmesHousing-Datensatzes](http://jse.amstat.org/v19n3/decock/DataDocumentation.txt). Übrigens finden sich auf der Seite [Gimme Shelter](https://www.gimme-shelter.com/category/term-2/) recht gute Erklärungen einiger (amerikanischen) Fachbegriffe der Immobilienbranche. 
+
+In der Datendokumentation sehen wir, dass kategorielle Variablen als *Nominal* oder *Ordinal* aufgeführt werden. Wir könnten jetzt manuell eine Liste anlegen, aber als Data Scientists machen wir das natürlich nicht, sondern extrahieren die notwendige Information als Datensatz (die Basis für den hier verwendeten Code kommt von [Ron Sarafian](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)).
+
+```{r}
+library(stringr)
+library(purrr)
+
+doku <- url("http://jse.amstat.org/v19n3/decock/DataDocumentation.txt", encoding = "latin1") %>% readLines() 
+data_type_lines <- grep("Nominal|Ordinal|Discrete|Continuous", doku, value = TRUE)
+
+matches <- data_type_lines %>% str_match_all("^(.+) \\((.+)\\):") %>% compact %>% 
+    map(~ c(VAR = .[,2], TYPE = .[,3])) %>% map_dfr(as.list)
+```
+
+Jetzt liegen die Spaltenbezeichnungen zusammen mit der Datenart als `data.frame` für die weitere Verarbeitung vor. Leider stellt sich heraus, dass die Dokumentation in einigen Fällen von den Spaltenbezeichnung im Datensatz abweicht, so dass wir diese Bezeichnungen manuell korrigieren müssen. Ein schönes Beispiel dafür, dass man bei der explorativen Datenanalyse immer wieder unerwartet auf Probleme stößt.
+
+```{r}
+
+categorials <- matches %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% dplyr::select(VAR) %>% 
+    mutate(VAR = case_when(
+        VAR == "Exterior 1" ~ "Exterior 1st",
+        VAR == "Exterior 2" ~ "Exterior 2nd",
+        VAR == "HeatingQC" ~ "Heating QC",
+        VAR == "KitchenQual" ~ "Kitchen Qual",
+        VAR == "FireplaceQu" ~ "Fireplace Qu",
+        TRUE ~ VAR
+    )) %>% pull() %>% make.names()
+
+```
+
+Zunächst modifizieren wir unseren Datensatz so, dass R die kategoriellen Variablen erkennt, indem wir die entsprechenden Spalten zu `factors` konvertieren.
+```{r}
+raw <- raw %>% mutate_at(vars(all_of(categorials)), as.factor) 
+```
+
+
+Jetzt können wir uns ansehen, wieviele verschiedene Ausprägungen wir für die kategoriellen Variablen haben. Nachdem wir schon wissen, dass *PID* eine eindeutige Kennung ist, lassen wir diese Variable aus der Betrachtung heraus:
+
+```{r} 
+categ_freq <- raw %>% dplyr::select(all_of(categorials)) %>% dplyr::select(-PID) %>% 
+    summarise_all(~ length(unique(.))) %>% t %>% as_tibble(rownames = "Variable") %>% 
+    dplyr::select(Variable, Werte = V1)
+
+categ_freq %>% 
+    ggplot(aes(x = reorder(Variable, Werte), y = Werte)) + geom_col() + coord_flip()
+```
+
+Im nächsten Schritt gucken wir uns alle kategoriellen Variablen an, die 6 oder mehr verschiedene Ausprägungen haben. Für diese erstellen wir jeweils ein Histogramm der Ausprägungen, um zu sehen, ob es seltene Ausprägungen gibt.
+```{r}
+rel_categs <- categ_freq %>% filter(Werte >= 6) %>% pull(Variable)
+
+categ_levels <- raw %>% dplyr::select(all_of(rel_categs)) %>% map(~ fct_count(.))
+
+```
+
+Die Informationen über die Häufigkeit visualisieren wir: Weil alle unsere Plots verschiedene Ausprägungen haben und unterschiedlich viele Ausprägungen, bietet sich der üblich Weg in `ggplot` über `facet_wrap` oder `facet_grid` nicht an. Hier ist das Paket `patchwork` hilfreich, durch das wir eine Liste von Plots automatisch in einer Graphik anordnen können.
+```{r fig.width = 15}
+library(patchwork)
+
+plot_level_freq <- function(idx, data) {
+    data[[idx]] %>% ggplot(aes(x = reorder(f, n), y = n)) + geom_col() + coord_flip() + xlab(names(data)[[idx]])
+}
+
+var_cl_plots <- lapply(seq_along(categ_levels), plot_level_freq, categ_levels)
+
+wrap_plots(var_cl_plots)
+```
+Zwar sind nicht alle Plots gut lesbar, aber wir sehen, was wir wissen wollten: Es gibt für viele kategorielle Variablen Gruppen von Ausprägungen, die sehr selten vorkommen.
+Weiter unten bei der Datenvorverarbeitung für die Modellierung, werden wir daher solche kategoriellen Variablen entsprechend bearbeiten und seltene Ausprägungen zusammenfassen.
 
 ## Informationsbeiträge von Variablen
 
+Nachdem wir uns im vorherigen Abschnitt mit kategoriellen Variablen befasst haben, kehren wir hier wieder zurück zu den numerischen Variablen. Wir sollten uns in Erinnerung rufen, das wir letztlich ein Modell für den Verkaufspreis von Immobilien entwickeln wollen. Dahinter steckt die Annahme, dass verschiedene Eigenschaften bzw. Eigenschaftskombinationen von Immobilien Einfluss auf den Preis haben. 
+
 ### Beitrag einzelner Variablen
+
+Wir können davon ausgehen, dass Eigenschaften, die für alle Immobilien gleich oder zumindest sehr ähnlich sind, auf den Preis keinen Einfluss haben werden. Wenn wir also Variablen identifizieren, die wenig informativ sind, können wir diese von der weiteren Betrachtung ausschließen.
+
+Wenn wir nur einzelne Variablen betrachten, können wir als Statistik für den Informationsgehalt numerischer Variablen die Varianz der Ausprägungen (Werte) verwenden.
+
+
+
 
 * Spalten mit wenig Varianz sind nicht wichtig
 * mit kompletter Varianz sind Schlüssel
