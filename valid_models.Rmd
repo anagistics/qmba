@@ -322,8 +322,9 @@ library(purrr)
 doku <- url("http://jse.amstat.org/v19n3/decock/DataDocumentation.txt", encoding = "latin1") %>% readLines() 
 data_type_lines <- grep("Nominal|Ordinal|Discrete|Continuous", doku, value = TRUE)
 
-matches <- data_type_lines %>% str_match_all("^(.+) \\((.+)\\):") %>% compact %>% 
-    map(~ c(VAR = .[,2], TYPE = .[,3])) %>% map_dfr(as.list)
+matches <- data_type_lines %>% str_match_all("^(.+)( |\\s)\\((.+)\\)(\\s*):") %>% compact %>% 
+    map(~ c(VAR = .[,2], TYPE = .[,4])) %>% map_dfr(as.list) %>% 
+    mutate(VAR = make.names(VAR))
 ```
 
 Jetzt liegen die Spaltenbezeichnungen zusammen mit der Datenart als `data.frame` für die weitere Verarbeitung vor. Leider stellt sich heraus, dass die Dokumentation in einigen Fällen von den Spaltenbezeichnung im Datensatz abweicht, so dass wir diese Bezeichnungen manuell korrigieren müssen. Ein schönes Beispiel dafür, dass man bei der explorativen Datenanalyse immer wieder unerwartet auf Probleme stößt.
@@ -332,13 +333,14 @@ Jetzt liegen die Spaltenbezeichnungen zusammen mit der Datenart als `data.frame`
 
 categorials <- matches %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% dplyr::select(VAR) %>% 
     mutate(VAR = case_when(
-        VAR == "Exterior 1" ~ "Exterior 1st",
-        VAR == "Exterior 2" ~ "Exterior 2nd",
-        VAR == "HeatingQC" ~ "Heating QC",
-        VAR == "KitchenQual" ~ "Kitchen Qual",
-        VAR == "FireplaceQu" ~ "Fireplace Qu",
+        VAR == "Exterior.1" ~ "Exterior.1st",
+        VAR == "Exterior.2" ~ "Exterior.2nd",
+        VAR == "HeatingQC" ~ "Heating.QC",
+        VAR == "KitchenQual" ~ "Kitchen.Qual",
+        VAR == "FireplaceQu" ~ "Fireplace.Qu",
+        VAR == "BsmtFinType.2" ~ "BsmtFin.Type.2",
         TRUE ~ VAR
-    )) %>% pull() %>% make.names()
+    )) %>% pull() 
 
 ```
 
@@ -352,8 +354,8 @@ Jetzt können wir uns ansehen, wieviele verschiedene Ausprägungen wir für die 
 
 ```{r} 
 categ_freq <- raw %>% dplyr::select(all_of(categorials)) %>% dplyr::select(-PID) %>% 
-    summarise_all(~ length(unique(.))) %>% t %>% as_tibble(rownames = "Variable") %>% 
-    dplyr::select(Variable, Werte = V1)
+    summarise_all(~ length(unique(.))) %>% 
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "Werte")
 
 categ_freq %>% 
     ggplot(aes(x = reorder(Variable, Werte), y = Werte)) + geom_col() + coord_flip()
@@ -390,8 +392,37 @@ Nachdem wir uns im vorherigen Abschnitt mit kategoriellen Variablen befasst habe
 
 Wir können davon ausgehen, dass Eigenschaften, die für alle Immobilien gleich oder zumindest sehr ähnlich sind, auf den Preis keinen Einfluss haben werden. Wenn wir also Variablen identifizieren, die wenig informativ sind, können wir diese von der weiteren Betrachtung ausschließen.
 
-Wenn wir nur einzelne Variablen betrachten, können wir als Statistik für den Informationsgehalt numerischer Variablen die Varianz der Ausprägungen (Werte) verwenden.
+Wenn wir nur einzelne Variablen betrachten, können wir als Statistik für den Informationsgehalt numerischer Variablen die Varianz der Ausprägungen (Werte) verwenden. Die Spalte *Order* können wir dabei ignorieren, weil sie einfach nur eine Ordnungszahl enthält.
 
+```{r}
+library(tidyselect)
+
+numeric_cols <- setdiff(names(raw), categorials)
+
+(nvar_var <- raw %>% select_at(all_of(numeric_cols)) %>% dplyr::select(-Order) %>% 
+    #summarise_all(~ var(., na.rm = TRUE) ) %>%     
+     summarise_all(~ sd(., na.rm = TRUE) / mean(., na.rm = TRUE)) %>% 
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "Coeff") %>% 
+        arrange(Coeff))
+```
+
+Anstelle der Tabelle ist vielleicht auch eine graphische Darstellung nützlich. 
+
+```{r fig.width = 15}
+raw_rs <- raw %>% select_at(all_of(numeric_cols)) %>% dplyr::select(-Order) %>% 
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "Wert") 
+
+plot_density <- function(data) {
+    data %>% filter(!is.na(Wert)) %>% 
+        ggplot(aes(x = Wert)) + geom_density() + xlab(first(data$Variable))
+}
+
+var_data <- raw_rs %>% group_split(Variable)
+
+plots <- lapply(var_data, plot_density)
+
+wrap_plots(plots)
+```
 
 
 
