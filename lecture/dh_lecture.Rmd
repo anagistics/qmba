@@ -1,4 +1,20 @@
-# Valide Modelle
+--- 
+title: "Vorlesung Data Science Praxis"
+author: "Andreas Cardeneo"
+date: "`r Sys.Date()`"
+site: "bookdown::bookdown_site"
+output:
+  bookdown::gitbook:
+    lib_dir: "book_assets"
+  bookdown::pdf_book:
+    keep_tex: yes
+documentclass: book
+bibliography: ["citation.bib"]
+biblio-style: "apalike"
+link-citations: true
+---
+
+# Vorlesung Data Science
 
 *Deutsch, damit es als Arbeitsblatt geeignet ist*
 
@@ -476,11 +492,19 @@ Wir können anhand des Diagramms auch schon erkennen, dass es einige (aber nicht
 
 ## Transformationen
 
+### Behandlung kategorieller Variablen
+
+one-hot-encoding oder dummy-encoding
+
 ## Variablen entfernen
 
 ## Instanzen entfernen
 
+
+
 # Modellbildung
+
+Lasso-Modell: Gleichzeitig Features auswählen und Modell fitten
 
 ## Trainings- und Testdaten
 
