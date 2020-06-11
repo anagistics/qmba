@@ -1,14 +1,9 @@
---- 
+---
 title: "Vorlesung Data Science Praxis"
 author: "Andreas Cardeneo"
 date: "`r Sys.Date()`"
-site: "bookdown::bookdown_site"
-output:
-  bookdown::gitbook:
-    lib_dir: "book_assets"
-  bookdown::pdf_book:
-    keep_tex: yes
-documentclass: book
+output: learnr::tutorial
+runtime: shiny_prerendered
 bibliography: ["citation.bib"]
 biblio-style: "apalike"
 link-citations: true
@@ -16,9 +11,7 @@ link-citations: true
 
 # Vorlesung Data Science
 
-*Deutsch, damit es als Arbeitsblatt geeignet ist*
-
-In diesem Kapitel geht es um Techniken, um *valide* Modelle zu erstellen. Valide Modelle erfüllen die Voraussetzungen der Methoden, die für ihre Analyse verwendet werden. Wir werden hier zunächst mit Lineare Regression arbeiten, weil diese Methode gut verständlich und theoretisch fundiert ist und ihre Ergebnisse gut *erklärbar* sind. Das heißt nicht, dass diese Method auch immer *geeignet* ist, aber in vielen praktischen Fällen kann sie ein guter erster Ansatz sein.
+In dieser Vorlesung geht es um Techniken, um *valide* Modelle zu erstellen. Valide Modelle erfüllen die Voraussetzungen der Methoden, die für ihre Analyse verwendet werden. Wir werden hier zunächst mit Lineare Regression arbeiten, weil diese Methode gut verständlich und theoretisch fundiert ist und ihre Ergebnisse gut *erklärbar* sind. Das heißt nicht, dass diese Method auch immer *geeignet* ist, aber in vielen praktischen Fällen kann sie ein guter erster Ansatz sein.
 
 Wir werden einen im Internet und für R verfügbaren Datensatz benutzen, den *Ames Iowa Housing" Datensatz (s. @R-AmesHousing). Dabei handelt es sich um Verkaufsdaten zu Wohnungen und Gebäuden sowie um beschreibende Daten der Immobilien. Es handelt sich damit um ein durchaus anwendungsnahes Szenario.
 
@@ -215,7 +208,7 @@ Bei fehlenden Werten nach MAR würde das Löschen von Instanzen allerdings zu st
 
 ##### Fehlende Werte in der Praxis
 
-In der Praxis, gerade bei der Verwendung von Daten aus operativen IT-Systemen, wird das Fehlen von Werten oftmals durch besondere Ausprägungen codiert. Ein Grund dafür ist, dass die Benutzeroberfläche der IT-Systeme Eingaben in den entsprechenden Feldern erwartet, die der oder die SachbearbeiterIn im Moment der Eingabe nicht leisten kann. In numerischen Feldern wird dann gerne ein Wert wie 99 oder 999 eingetragen, in Textfeldern wird ein Leerzeichen "\u237d", ein "-" oder "." eingetragen. 
+In der Praxis, gerade bei der Verwendung von Daten aus operativen IT-Systemen, wird das Fehlen von Werten oftmals durch besondere Ausprägungen codiert. Ein Grund dafür ist, dass die Benutzeroberfläche der IT-Systeme Eingaben in den entsprechenden Feldern erwartet, die der oder die SachbearbeiterIn im Moment der Eingabe nicht leisten kann. In numerischen Feldern wird dann gerne ein Wert wie 99 oder 999 eingetragen, in Textfeldern wird ein Leerzeichen "⍽", ein "-" oder "." eingetragen. 
 
 #### Umgang mit fehlenden Werten
 
@@ -391,7 +384,7 @@ categ_levels <- raw %>% dplyr::select(all_of(rel_categs)) %>% map(~ fct_count(.)
 ```
 
 Die Informationen über die Häufigkeit visualisieren wir: Weil alle unsere Plots verschiedene Ausprägungen haben und unterschiedlich viele Ausprägungen, bietet sich der üblich Weg in `ggplot` über `facet_wrap` oder `facet_grid` nicht an. Hier ist das Paket `patchwork` hilfreich, durch das wir eine Liste von Plots automatisch in einer Graphik anordnen können.
-```{r fig.width = 15}
+```{r}
 library(patchwork)
 
 plot_level_freq <- function(idx, data) {
@@ -417,14 +410,14 @@ Wenn wir nur einzelne Variablen betrachten, können wir als Statistik für den I
 
 Als ersten Schritt visualisieren wir die Verteilungen (genauer: Dichtefunktionen) der numerischen Variablen. Nachdem wir oben schon die kategoriellen Variablen identifiziert haben, können wir die numerischen einfach als Differenz zur vollständigen Variablenmenge ermitteln:
 
-```{r fig.width = 15}
+```{r}
 library(tidyselect)
 
 numeric_cols <- setdiff(names(raw), categorials)
 ```
 
 Für die graphische Darstellung müssen wir den Datensatz wieder in ein *langes Format* bringen, analog dem Vorgehen weiter oben. 
-```{r fig.width = 15}
+```{r}
 raw_rs <- raw %>% select_at(all_of(numeric_cols)) %>% dplyr::select(-Order) %>% 
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Wert") 
 
@@ -488,29 +481,29 @@ Wir können anhand des Diagramms auch schon erkennen, dass es einige (aber nicht
 
 
 
-# Datenvorverarbeitung
+## Datenvorverarbeitung
 
-## Transformationen
+### Transformationen
 
-### Behandlung kategorieller Variablen
+#### Behandlung kategorieller Variablen
 
 one-hot-encoding oder dummy-encoding
 
-## Variablen entfernen
+### Variablen entfernen
 
-## Instanzen entfernen
+### Instanzen entfernen
 
 
 
-# Modellbildung
+## Modellbildung
 
 Lasso-Modell: Gleichzeitig Features auswählen und Modell fitten
 
-## Trainings- und Testdaten
+### Trainings- und Testdaten
 
-## Modell erstellen
+### Modell erstellen
 
-# Modellinterpretation
+## Modellinterpretation
 
 
 
@@ -518,13 +511,13 @@ Lasso-Modell: Gleichzeitig Features auswählen und Modell fitten
 
 
 Aus der Dokumentation zu dem Paket, die man mittels
-```{r}
+```{r eval=FALSE, include=TRUE}
 ??AmesHousing
 ```
 
 aufrufen kann, erfahren wir, dass wir mittels der Funktion `make_ames` eine schon etwas aufbereitete Datenbasis erhalten können:
 
-```{r}
+```{r eval=FALSE, include=TRUE}
 data <- make_ames()
 ```
 
@@ -534,25 +527,9 @@ data <- make_ames()
 
 ## Notizen
 
-Data Doku: http://jse.amstat.org/v19n3/decock/DataDocumentation.txt
-
-GeoLokationen im Artikel http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html
-
-Beispielanalyse: http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html
-
-
-
-
-
-
-## Colinearity
-
-* Check for colinearity and correlation, because otherwise the choice of reference level will fail
-
-## Reference level for categorical variables
-
-* Choice of reference levels: Modal factor is level 0
-* This independent choice of reference levels per variable only works if variables are in fact independent.
+* [Data Doku](http://jse.amstat.org/v19n3/decock/DataDocumentation.txt)
+* [GeoLokationen im Artikel](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)
+* [Beispielanalyse](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)
 
 
 
