@@ -384,7 +384,7 @@ categ_levels <- raw %>% dplyr::select(all_of(rel_categs)) %>% map(~ fct_count(.)
 ```
 
 Die Informationen über die Häufigkeit visualisieren wir: Weil alle unsere Plots verschiedene Ausprägungen haben und unterschiedlich viele Ausprägungen, bietet sich der üblich Weg in `ggplot` über `facet_wrap` oder `facet_grid` nicht an. Hier ist das Paket `patchwork` hilfreich, durch das wir eine Liste von Plots automatisch in einer Graphik anordnen können.
-```{r}
+```{r fig.height = 24}
 library(patchwork)
 
 plot_level_freq <- function(idx, data) {
@@ -393,8 +393,9 @@ plot_level_freq <- function(idx, data) {
 
 var_cl_plots <- lapply(seq_along(categ_levels), plot_level_freq, categ_levels)
 
-wrap_plots(var_cl_plots)
+wrap_plots(var_cl_plots, ncol = 2)
 ```
+
 Zwar sind nicht alle Plots gut lesbar, aber wir sehen, was wir wissen wollten: Es gibt für viele kategorielle Variablen Gruppen von Ausprägungen, die sehr selten vorkommen.
 Weiter unten bei der Datenvorverarbeitung für die Modellierung, werden wir daher solche kategoriellen Variablen entsprechend bearbeiten und seltene Ausprägungen zusammenfassen.
 
@@ -417,7 +418,7 @@ numeric_cols <- setdiff(names(raw), categorials)
 ```
 
 Für die graphische Darstellung müssen wir den Datensatz wieder in ein *langes Format* bringen, analog dem Vorgehen weiter oben. 
-```{r}
+```{r fig.height=24}
 raw_rs <- raw %>% select_at(all_of(numeric_cols)) %>% dplyr::select(-Order) %>% 
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Wert") 
 
@@ -430,7 +431,7 @@ var_data <- raw_rs %>% group_split(Variable)
 
 plots <- lapply(var_data, plot_density)
 
-wrap_plots(plots)
+wrap_plots(plots, ncol = 2)
 ```
 
 Durch die Dichtediagramme können wir schon ahnen, welche Variablen wahrscheinlich eine niedrige Varianz aufweisen. Allerdings kann die Intuition auch täuschen, so dass wir die Varianzen der Variablen auch noch rechnerisch bestimmen:
@@ -478,6 +479,84 @@ Zu beachten ist hier, dass die Beobachtungen mit fehlenden Werten entfernt werde
 
 Wir können anhand des Diagramms auch schon erkennen, dass es einige (aber nicht viele) Variablen gibt, die stärker (positiv) mit dem Verkaufspreis korreliert sind.
 
+#### Multikollinearität
+
+Allgemein spricht man von *(Multi)Kollinearität*, wenn zwei oder mehrere unabhängige Variablen stark miteinander korreliert sind (s. @Sheather2009). In verschiedenen Methoden, darunter auch linearer Regression, führt Multikollinearität dazu, dass die Bedeutung einzelner Variablen nicht isoliert bewertet werden kann. Es kann sogar passieren, dass die Regressionskoeffizienten das falsche Vorzeichen haben und damit nicht nachvollziehbare Abhängigkeiten suggerieren (s. @Sheather2009 für ein Beispiel). Um zu ermitteln, wie stark Variablen von Multikollinearität betroffen sind, wird der sog. *Variance Inflaction Factor* (VIF) bestimmt. Die Bezeichung kommt daher, dass man zeigen kann (s. @Sheather2009), dass die Varianz der Regressionskoeffizienten einer Variablen mit der Korrelation zu anderen (unabhängigen) Variablen steigt. Da eine große Varianz der Regressionskoeffizienten für ein valides Modell unerwünscht ist, kann man dann entscheiden, Variablen mit großen VIF nicht in das Modell aufzunehmen.  
+
+In R gibt es (natürlich) verschiedene Möglichkeiten, den VIF-Wert zu bestimmen. Hier verwenden wir die `vif`-Funktion aus dem `car`-Paket. 
+Die Funktion erhält als Eingabe ein *lineares Modell* basierend auf einer R *Formel*, die die abhängige Variable zu den unabhängigen in Beziehung setzt. Wir probieren das an dieser Stelle für einige ausgewählte Variablen aus (und orientieren uns dabei an der Graphik zur Korrelation oben).
+Zunächst erstellen wir ein lineares Modell mit dem Verkaufspreis al abhängiger Variable und mehreren unabhängigen.
+
+```{r}
+library(car)
+
+linmod <- lm(SalePrice ~ Gr.Liv.Area + Wood.Deck.SF + Bedroom.AbvGr + Full.Bath + TotRms.AbvGrd,
+             data = raw %>% select_at(all_of(numeric_cols)))
+
+summary(linmod)
+
+```
+
+Der Koeffizient für die Variable *Bedroom.AbvGr* ist negativ, was erstmal erstaunlich ist, denn das würde bedeuten, dass der Verkaufspreis mit mehr Schlafzimmern sinkt. Gucken wir uns jetzt die *VIF* an:
+```{r}
+vif(linmod)
+```
+
+Der VIF-Wert für eine unabhängige Variable wird über das *Bestimmtheitsmaß* $R^2$ des linearen Regressionsmodells auf den verbleibenden unabhängigen Variablen berechnet: 
+
+```{r}
+bdrm_mod <- lm(formula = Bedroom.AbvGr ~ Gr.Liv.Area + Wood.Deck.SF + Full.Bath + TotRms.AbvGrd, 
+               data = raw %>% select_at(all_of(numeric_cols)))
+
+summary(bdrm_mod)
+```
+
+Der VIF-Wert für die Variable *Bedroom.AbvGr* wird dann berechnet als
+$$ VIF(\text{Bedroom.AbvGr}) = \frac{1}{1 - R_{\text{Bedroom.AbvGr}}^2} = \frac{1}{1 - 0.4597} = 1.851.$$
+Analog wird der VIF-Wert für die Variable *Gr.Liv.Area* ermittelt:
+
+```{r}
+gla_mod <- lm(formula = Gr.Liv.Area ~ Bedroom.AbvGr + Wood.Deck.SF + Full.Bath + TotRms.AbvGrd, 
+               data = raw %>% select_at(all_of(numeric_cols)))
+
+summary(gla_mod)
+```
+$$ VIF(\text{Gr.Liv.Area}) = \frac{1}{1 - R_{\text{Gr.Liv.Area}}^2} = \frac{1}{1 - 0.7205} = 3.578.$$
+
+Die Frage ist nun, ob solche VIF-Werte bedenklich sind. Diese Frage ist nich so einfach zu beantworten. Klar ist, dass der VIF-Wert mindestens 1 beträgt und gegen unendlich gehen kann. Bei einem Bestimmtheitsmaß $R^2$ von 0.64, d.h. einem *Korrelationskoeffizienten* von 0.8 (also schon recht stark korreliert), würde man einen VIF-Wert 
+$$ VIF = \frac{1}{1 - 0.64} = 2.78 $$ erhalten. In der Literatur (u.a. auch in @Sheather2009), wird oft ein VIF von mindestens 5 als kritisch gesehen. Das würde einem (betragsmäßigem) Korrelationskoeffizienten von 
+$$ R = \sqrt{1 - \frac{1}{VIF}} = \sqrt{1 - \frac{1}{5}} = 0.89$$ 
+entsprechen, also knapp 0.9. Wir sehen, der VIF-Wert wächst recht schnell für kleinere Änderungen des Korrelationskoeffizienten und es gibt auch Quellen, z.B. https://statisticalhorizons.com/multicollinearity, die ab einem VIF von 2.5 vorsichtig werden. 
+
+Wie würde das Regressionsmodell aussehen, wenn wir nur die hochkorrelierte Variable *Gr.Liv.Area* verwenden würden?
+```{r}
+gla1_mod <- lm(formula = SalePrice ~ Gr.Liv.Area, 
+               data = raw %>% select_at(all_of(numeric_cols)))
+
+summary(gla1_mod)
+```
+
+Und wenn wir die anderen nicht hoch korrelierten Variablen nehmen?
+
+```{r}
+lc_mod <- lm(formula = SalePrice ~ Wood.Deck.SF + Bedroom.AbvGr + Full.Bath, 
+             data = raw %>% select_at(all_of(numeric_cols)))
+
+summary(lc_mod)
+```
+
+Also offensichtlich können wir nicht einfach alle hochkorrelierten Variablen einfach entfernen, ohne die Modellqualität (hier gemessen anhand des Bestimmtheitsmaßes) deutlich zu verschlechtern. Der VIF-Wert gibt uns leider nicht an, woher genau die hohe Korrelation stammt, aber aus der obigen Korrelationsmatrix können wir sehen, dass *TotRms.AbvGrd* stark mit den anderen Variablen korreliert ist. Daher prüfen wir ein Modell ohne diese Variable:
+
+```{r}
+gwbf_mod <- lm(formula = SalePrice ~ Gr.Liv.Area + Wood.Deck.SF + Bedroom.AbvGr + Full.Bath, 
+             data = raw %>% select_at(all_of(numeric_cols)))
+
+summary(gwbf_mod)
+
+vif(gwbf_mod)
+```
+
+Damit erreichen wir die Modellqualität des ersten Modells und senken die VIF-Werte, d.h. wir haben ein einfacheres Modell gleicher Qualität erreicht, das besser erklärbar und robuster ist (weniger Varianz in den Regressionskoeffizienten). Aber der Koeffizient für die Schlafzimmerzahl ist immer noch negativ...
 
 
 
