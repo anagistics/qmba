@@ -8,14 +8,15 @@ bibliography: ["citation.bib"]
 biblio-style: "apalike"
 link-citations: true
 ---
+# Data Science Praxis 
 
-# Vorlesung Data Science
+## Einführung
 
 In dieser Vorlesung geht es um Techniken, um *valide* Modelle zu erstellen. Valide Modelle erfüllen die Voraussetzungen der Methoden, die für ihre Analyse verwendet werden. Wir werden hier zunächst mit Lineare Regression arbeiten, weil diese Methode gut verständlich und theoretisch fundiert ist und ihre Ergebnisse gut *erklärbar* sind. Das heißt nicht, dass diese Method auch immer *geeignet* ist, aber in vielen praktischen Fällen kann sie ein guter erster Ansatz sein.
 
 Wir werden einen im Internet und für R verfügbaren Datensatz benutzen, den *Ames Iowa Housing" Datensatz (s. @R-AmesHousing). Dabei handelt es sich um Verkaufsdaten zu Wohnungen und Gebäuden sowie um beschreibende Daten der Immobilien. Es handelt sich damit um ein durchaus anwendungsnahes Szenario.
 
-## Das Szenatio
+## Das Szenario
 
 Die *HaiBank AG* möchte im Niedrigzinsumfeld und angesichts steigender Immobilienpreise ihr eigenes Angebot als Immobilienmakler ausbauen. Unter der Marke *ImmoHai* sollen Maklerdienste für Immobilien angeboten werden und eine wichtige Komponente dabei ist die Abschätzung der erwarteten Profitabilität der Vermittlung einer Immobilie. Neben dem eigenen Aufwand auf der Kostenseite ist dafür der erzielbare Verkaufspreis maßgeblich. Traditionell wurde dieser Verkaufspreis von Immobilienexperten nach einer Begehung des Objekts und anhand der Erfahrung eingeschätzt. Weil die Unternehmensstrategie einen deutlichen Ausbau des Maklergeschäfts anstrebt, ist dieser Ansatz aufgrund des hohen Aufwands nicht mehr zu leisten. Stattdessen soll es, ähnlich wie bei der Bonitätsprüfung für Hauskredite, eine Software geben, die anhand von Kennzahlen der Immobilie einen realisierbaren Verkaufspreis prognostiziert. Diese Software soll von Sachbearbeitern im Kundengespräch verwendet werden und dabei helfen zu entscheiden, ob die *HaiBank* als Makler für die betreffende Immobilie auftreten soll.
 
@@ -311,16 +312,24 @@ Tatsächlich ist es sehr hilfreich, Daten und ihre Verteilungen zum besseren Ver
 plot_outlier(raw, SalePrice)
 ```
 
+#### Ausreisser behandeln
+
+Wenn man feststellt, dass es sich bei den Ausreissern nicht um Fehler handelt, bspw. Tippfehler oder falsche Sensormeldungen, hat man folgende Möglichkeiten, mit den Ausreissern umzugehen:
+* *Trimmen*: Beim Trimmen gibt man einen Wert $p\in[0,1]$ vor, bspw. $p = 0.9$, und schließt dann alle Beobachtungen aus, bei denen die betrachtete Variable einen Wert unterhalb des $100\cdot\frac{p}{2}\%$-Perzentils bzw. oberhalb des $100\cdot(1 - \frac{p}{2})\%$-Perzentils hat. Im Beispiel würde man also alle Beobachtungen mit Werten unterhalb des 5%- bzw. oberhalb des 95%-Perzentils entfernen.
+* *Winsorisieren*: Hier gibt man auch einen Wert $p\in[0,1]$ vor, bspw. $p = 0.9$, und setzt dann alle Datenwerte unterhalb des $100\cdot\frac{p}{2}\%$-Perzentils auf den Wert des $100\cdot\frac{p}{2}\%$-Perzentils und analog dazu alle Werte größer als das $100\cdot(1 - \frac{p}{2})\%$-Perzentil auf den Wert des $100\cdot(1 - \frac{p}{2})\%$-Perzentils. Im Beispiel wären die untere bzw. obere Grenze also das 5%- bzw. das 95%-Perzentil.
+
+Beim Winsorisieren verliert man also keine Datensätze, verändert die vorhandenen aber. 
+
+### Seltene Werte
+
 Wie oben erwähnt, können kategorielle Variablen nicht gut numerisch zusammengefasst werden. Die Verteilung der Merkmalsausprägungen ist hingegen sehr wertvoll, weil schnell die häufigen und seltenen Ausprägungen erfasst werden können. Ein einfaches *Histogramm* lässt sich mit dem Paket `ggplot2` folgendermaßen erstellen:
 ```{r}
 raw %>% ggplot(aes(x = MS.Zoning)) + geom_histogram(stat = "count")
 ```
 
-### Seltene Werte
-
 Aus Histogrammen können wir ableiten, welche Werte je Variable sehr selten auftreten. Gerade bei der Analyse kategorieller Variablen stellt sich oft heraus, dass einige Ausprägungen sehr selten auftreten. Eine statistische Analyse auf Basis dieser Ausprägungen würde statistisch wertlos sein, da die Anzahl der Beobachtungen pro Ausprägung nicht für statistisch valide Aussagen ausreicht. Daher ist es empfehlenswert und üblich, seltene Ausprägungen zu Gruppen zusammenzufassen und eine neue Dummy-Ausprägung, bspw. *sonstige*, für diese einzuführen.
 
-Um eine vollständige Liste der kategoriellen Variablen zu erhalten, hilft die [Dokumentation des AmesHousing-Datensatzes](http://jse.amstat.org/v19n3/decock/DataDocumentation.txt). Übrigens finden sich auf der Seite [Gimme Shelter](https://www.gimme-shelter.com/category/term-2/) recht gute Erklärungen einiger (amerikanischen) Fachbegriffe der Immobilienbranche. 
+Im Folgenden untersuchen wir die kategoriellen Variablen des *AmesHousing*-Datensatzes. Um eine vollständige Liste der kategoriellen Variablen zu erhalten, hilft die [Dokumentation des AmesHousing-Datensatzes](http://jse.amstat.org/v19n3/decock/DataDocumentation.txt). Übrigens finden sich auf der Seite [Gimme Shelter](https://www.gimme-shelter.com/category/term-2/) recht gute Erklärungen einiger (amerikanischen) Fachbegriffe der Immobilienbranche. 
 
 In der Datendokumentation sehen wir, dass kategorielle Variablen als *Nominal* oder *Ordinal* aufgeführt werden. Wir könnten jetzt manuell eine Liste anlegen, aber als Data Scientists machen wir das natürlich nicht, sondern extrahieren die notwendige Information als Datensatz (die Basis für den hier verwendeten Code kommt von [Ron Sarafian](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)).
 
@@ -328,19 +337,23 @@ In der Datendokumentation sehen wir, dass kategorielle Variablen als *Nominal* o
 library(stringr)
 library(purrr)
 
-doku <- url("http://jse.amstat.org/v19n3/decock/DataDocumentation.txt", encoding = "latin1") %>% readLines() 
-data_type_lines <- grep("Nominal|Ordinal|Discrete|Continuous", doku, value = TRUE)
+housing_variable_types <- function(doc_url = "http://jse.amstat.org/v19n3/decock/DataDocumentation.txt") {
+  doku <- url(doc_url, encoding = "latin1") %>% readLines() 
+  data_type_lines <- grep("Nominal|Ordinal|Discrete|Continuous", doku, value = TRUE)
 
-matches <- data_type_lines %>% str_match_all("^(.+)( |\\s)\\((.+)\\)(\\s*):") %>% compact %>% 
+  data_type_lines %>% str_match_all("^(.+)( |\\s)\\((.+)\\)(\\s*):") %>% compact %>% 
     map(~ c(VAR = .[,2], TYPE = .[,4])) %>% map_dfr(as.list) %>% 
     mutate(VAR = make.names(VAR))
+}
+
+type_data <- housing_variable_types()
 ```
 
 Jetzt liegen die Spaltenbezeichnungen zusammen mit der Datenart als `data.frame` für die weitere Verarbeitung vor. Leider stellt sich heraus, dass die Dokumentation in einigen Fällen von den Spaltenbezeichnung im Datensatz abweicht, so dass wir diese Bezeichnungen manuell korrigieren müssen. Ein schönes Beispiel dafür, dass man bei der explorativen Datenanalyse immer wieder unerwartet auf Probleme stößt.
 
 ```{r}
-
-categorials <- matches %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% dplyr::select(VAR) %>% 
+housing_categorials <- function(type_frame) {
+  type_frame %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% dplyr::select(VAR) %>% 
     mutate(VAR = case_when(
         VAR == "Exterior.1" ~ "Exterior.1st",
         VAR == "Exterior.2" ~ "Exterior.2nd",
@@ -349,7 +362,10 @@ categorials <- matches %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% dplyr::
         VAR == "FireplaceQu" ~ "Fireplace.Qu",
         VAR == "BsmtFinType.2" ~ "BsmtFin.Type.2",
         TRUE ~ VAR
-    )) %>% pull() 
+    )) %>% pull()
+}
+
+categorials <- housing_categorials(type_data)
 
 ```
 
@@ -558,19 +574,71 @@ vif(gwbf_mod)
 
 Damit erreichen wir die Modellqualität des ersten Modells und senken die VIF-Werte, d.h. wir haben ein einfacheres Modell gleicher Qualität erreicht, das besser erklärbar und robuster ist (weniger Varianz in den Regressionskoeffizienten). Aber der Koeffizient für die Schlafzimmerzahl ist immer noch negativ...
 
-
-
 ## Datenvorverarbeitung
 
-### Transformationen
+Nachdem wir ein besseres Verständnis für die Daten und die Zusammenhänge zwischen den Variablen erhalten haben, können und müssen wir vor der Modellerstellung noch weitere Vorverarbeitungsschritte vornehmen. Tatsächlich kann dieser Schritt nicht ohne Verständnis für das angestrebte Modell durchgeführt werden: Einige Arten von Modellen können bspw. nicht mit fehlenden Werten oder kategoriellen Variablen umgehen (beides gilt für lineare und logistische Regression)[^1]. Nachdem man zu Beginn oftmals noch nicht sicher weiß, welche Art von Modell das beste Ergebnis liefert, ist die Datenvorbereitung in der Praxis ein iterativer Prozess. 
 
-#### Behandlung kategorieller Variablen
+Wir werden uns, wie oben auch schon praktiziert, hier mit einem linearen Regressionsmodell beschäftigen. Unser Modell wird also die Form
+$$ \hat{y} = \beta_0 + \sum_{i=1}^n \beta_i\cdot x_i + \varepsilon$$ haben.
+Dabei ist $\hat{y}$ die Schätzung für die *Zielvariable* (hier der Verkaufspreis), die $x_i$ sind $n$ unabhängige Variablen (die Prädiktoren) und $\varepsilon$ ist ein Fehlerterm. 
+Gesucht sind die Koeffizienten $\beta_0$ (konstanter Term, *intercept*) und $\beta_i$. Ermittelt werden diese Koeffizienten anhand von $N$ *Trainingsdatensätzen* $(y^j, x_1^j, x_2^j,\ldots,x_n^j), j = 1,\ldots,N$ durch Lösen des Optimierungsproblems 
+$$ \min_{\beta_0, \beta_1,\ldots,\beta_n} \sum_{j=1}^N \left(y^j - \left(\beta_0 + \sum_{i=1}^n \beta_i\cdot x_i^j\right)\right)^2. $$
+Für dieses Optimierungsproblem kann man geschlossene Ausdrücke für die optimalen Koeffizienten $\beta_0^*, \beta_1^*,\ldots, \beta_n^*$ angeben und die Lösung somit effizient berechnen (s. @Sheather2009).
 
-one-hot-encoding oder dummy-encoding
+[^1]: Hier darf man nicht das Verfahren an sich mit der Implementierung des Verfahrens verwechseln. Diese kann bspw. automatisch Datensätze mit fehlenden Werten entfernen und dann wirkt das Verfahren nach außen hin so, als könnte es mit fehlenden Werten umgehen. 
+
+Für die Datenvorbereitung des Modells werden wir das `recipes`-Paket verwenden. Dieses Paket bietet schon eine Vielzahl typischer Vorbereitungsschritte, die sich einfach zu einer *Pipeline* zusammensetzen lassen. Diese Pipeline kann dann auch einfach wieder auf andere Daten angewandt werden, was die Reproduzierbarkeit und Wiederverwendung erleichtert.
+
+Wir beginnen das *Rezept* mit der Aufteilung des Datensatzes in einen Trainings- und einen Testdatensatz. Auf Basis des Trainingsdatensatzes wird das Modell *gelernt* und die Güte des gelernten Modells wird dann anhand des Testdatensatzes gemessen. Damit ist sichergestellt, dass wir messen, wie gut das Modell die wesentlichen Eigenschaften der Daten abbildet und generalisieren kann: Schließlich sind wir daran interessiert, eine Verkaufspreisvorhersage für zuvor ungesehene Daten zu erhalten.
+
+Damit wir aber sicher sind, dass wir auch auf den richtigen Daten arbeiten, wiederholen wir an dieser Stelle ein paar der Erstellungsschritte von oben:
+
+### Grundlage (wieder)herstellen
+
+```{r}
+housing_data <- ames_raw
+names(housing_data) <- make.names(names(housing_data))
+
+type_data <- housing_variable_types()
+categorials <- housing_categorials(type_data)
+
+housing_data <- housing_data %>% mutate_at(vars(all_of(categorials)), as.factor) 
+
+```
+
+### Rezept anlegen
+```{r}
+library(rsample)
+
+set.seed(123456)
+
+data_split <- initial_split(housing_data)
+
+training_data <- training(data_split)
+test_data <- testing(data_split)
+```
+
+Das Rezept wird angelegt, indem wir die Zielvariable angeben und pauschal alle anderen Variablen als potentielle Prädiktoren vorsehen. 
+
+```{r}
+library(recipes)
+
+housing_rec <- recipe(SalePrice ~ ., data = training_data)
+```
+
+
+
+
+### Seltene Kategorien zusammenfassen
 
 ### Variablen entfernen
 
+
 ### Instanzen entfernen
+
+### Behandlung kategorieller Variablen
+one-hot-encoding oder dummy-encoding
+
 
 
 
