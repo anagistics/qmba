@@ -618,7 +618,7 @@ training_data <- training(data_split)
 test_data <- testing(data_split)
 ```
 
-Das Rezept wird angelegt, indem wir die Zielvariable angeben und pauschal alle anderen Variablen als potentielle Prädiktoren vorsehen. 
+Das Rezept wird angelegt, indem wir die Zielvariable angeben und pauschal alle anderen Variablen als potentielle Prädiktoren vorsehen. Im weiteren Verlauf werden wir das Rezept durch die Verkettung mit `step_*`-Funktionen weiter spezifizieren. Viele der `step_*`-Funktionen aus dem `recipes`-Paket bieten noch Parameter, um das Verhalten weiter zu beeinflussen. Die Dokumentation zum `recipes`-Paket listet unter https://recipes.tidymodels.org/articles/Ordering.html auch eine empfohlene Reihenfolge der Schritte auf.
 
 ```{r}
 library(recipes)
@@ -626,15 +626,53 @@ library(recipes)
 housing_rec <- recipe(SalePrice ~ ., data = training_data)
 ```
 
+### Imputation fehlender Werte
+Zunächst werden wir fehlende Werte mit einer komplexeren Imputationsstrategie, nämlich *kNN-Imputation* (s. u.a. @Beretta2016), durch plausible Werte ersetzen:
+```{r}
+housing_rec %>% 
+  step_knnimpute(all_predictors(), neighbors = 3) -> housing_rec
+```
 
-
+Um noch etwas deutlicher den *Fluss* der Transformationen darzustellen, haben wir hier den Zuweisungsoperator in der Form `->` verwendet.
 
 ### Seltene Kategorien zusammenfassen
 
-### Variablen entfernen
+Wir haben oben gesehen, dass es einige kategorielle Variablen gibt, die sehr seltene Ausprägungen aufweisen. Diese fassen wir zu Gruppen zusammen:
+```{r}
+housing_rec %>% 
+  step_other(all_nominals(), threshold = 0.05) -> housing_rec
+```
+
+### Konstante Variablen entfernen
+
+Der nächste Schritt entfernt die Variablen, die entweder eine sehr kleine Varianz oder eine sehr stark dominierende Ausprägung haben, d.h. wir wenden die Funktion `step_nvz` sowohl auf numerische als auch auf kategorielle oder nominale Variablen an.  
+
+```{r}
+housing_rec %>% 
+  step_nzv(all_predictors()) -> housing_rec
+```
+
+### Zentrieren numerischer Variablen
+
+Bei der linearen Regression ist der Erwartungswert der Zielvariable $y$ gleich dem konstanten Term $beta_0$, wenn die Prädiktoren $x_i = 0$ sind. 0 ist aber für viele Anwendungen in der Realität ein außergewöhnlicher Wert, bspw. eine Größe von 0$m$, eine Fläche von 0 $m^2$, eine Zahl von 0 Zimmern usw. Es wäre viel intuitiver, wenn $y = \beta_0$ für den Fall, dass die Prädiktoren ihren jeweiligen Durchschnittswert annehmen. Und genau das kann man erreichen, wenn man die Variablen zentriert, d.h. vom jeweiligen Wert den Durchschnitt abzieht, denn dann haben die (zentrierten) Variablen den Durchschnittswert 0.
+
+Manchmal *skaliert* man die Variablen auch noch zusätzlich zur Zentrierung: Das bedeutet, dass man die Werte auch noch durch die Standardabweichung dividiert. In der Statistik nennt man beide Schritte zusammen *z-Transformation*. Damit sind die Verteilungen der Variablenwerte vergleichbar und die Koeffizienten $\beta_i$ sind damit auch einfacher vergleichbar. Tatsächlich führt man durch den Schritt eine Einheitenumrechnung durch und alle Koeffizienten $\beta_i$ haben dadurch dieselbe Einheit.
+
+```{r}
+housing_rec %>% step_center(all_numeric()) %>% step_scale(all_numeric()) -> housing_rec
+```
 
 
-### Instanzen entfernen
+
+
+### Bereinigung um stark korrelierte Variablen
+
+Wie oben erläutert, können stark korrelierte Variablen die Robustheit des Modells und dessen Interpretation verschlechtern. Daher entfernen wir stark korrelierte numerische Variablen:
+```{r}
+housing_rec %>% step_corr(all_numeric(), threshold = 0.8) -> housing_rec
+```
+
+
 
 ### Behandlung kategorieller Variablen
 one-hot-encoding oder dummy-encoding
