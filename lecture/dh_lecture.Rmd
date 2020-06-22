@@ -576,7 +576,7 @@ Damit erreichen wir die Modellqualität des ersten Modells und senken die VIF-We
 
 ## Datenvorverarbeitung
 
-Nachdem wir ein besseres Verständnis für die Daten und die Zusammenhänge zwischen den Variablen erhalten haben, können und müssen wir vor der Modellerstellung noch weitere Vorverarbeitungsschritte vornehmen. Tatsächlich kann dieser Schritt nicht ohne Verständnis für das angestrebte Modell durchgeführt werden: Einige Arten von Modellen können bspw. nicht mit fehlenden Werten oder kategoriellen Variablen umgehen (beides gilt für lineare und logistische Regression)[^1]. Nachdem man zu Beginn oftmals noch nicht sicher weiß, welche Art von Modell das beste Ergebnis liefert, ist die Datenvorbereitung in der Praxis ein iterativer Prozess. 
+Nachdem wir ein besseres Verständnis für die Daten und die Zusammenhänge zwischen den Variablen erhalten haben, können und müssen wir vor der Modellerstellung noch weitere Vorverarbeitungsschritte vornehmen. Tatsächlich kann dieser Schritt nicht ohne Verständnis für das angestrebte Modell durchgeführt werden: Einige Arten von Modellen können bspw. nicht mit fehlenden Werten oder kategoriellen Variablen umgehen (beides gilt für lineare und logistische Regression - hier darf man aber nicht das Verfahren an sich mit der Implementierung des Verfahrens verwechseln. Diese kann bspw. automatisch Datensätze mit fehlenden Werten entfernen und dann wirkt das Verfahren nach außen hin so, als könnte es mit fehlenden Werten umgehen). Nachdem man zu Beginn oftmals noch nicht sicher weiß, welche Art von Modell das beste Ergebnis liefert, ist die Datenvorbereitung in der Praxis ein iterativer Prozess. 
 
 Wir werden uns, wie oben auch schon praktiziert, hier mit einem linearen Regressionsmodell beschäftigen. Unser Modell wird also die Form
 $$ \hat{y} = \beta_0 + \sum_{i=1}^n \beta_i\cdot x_i + \varepsilon$$ haben.
@@ -584,8 +584,6 @@ Dabei ist $\hat{y}$ die Schätzung für die *Zielvariable* (hier der Verkaufspre
 Gesucht sind die Koeffizienten $\beta_0$ (konstanter Term, *intercept*) und $\beta_i$. Ermittelt werden diese Koeffizienten anhand von $N$ *Trainingsdatensätzen* $(y^j, x_1^j, x_2^j,\ldots,x_n^j), j = 1,\ldots,N$ durch Lösen des Optimierungsproblems 
 $$ \min_{\beta_0, \beta_1,\ldots,\beta_n} \sum_{j=1}^N \left(y^j - \left(\beta_0 + \sum_{i=1}^n \beta_i\cdot x_i^j\right)\right)^2. $$
 Für dieses Optimierungsproblem kann man geschlossene Ausdrücke für die optimalen Koeffizienten $\beta_0^*, \beta_1^*,\ldots, \beta_n^*$ angeben und die Lösung somit effizient berechnen (s. @Sheather2009).
-
-[^1]: Hier darf man nicht das Verfahren an sich mit der Implementierung des Verfahrens verwechseln. Diese kann bspw. automatisch Datensätze mit fehlenden Werten entfernen und dann wirkt das Verfahren nach außen hin so, als könnte es mit fehlenden Werten umgehen. 
 
 Für die Datenvorbereitung des Modells werden wir das `recipes`-Paket verwenden. Dieses Paket bietet schon eine Vielzahl typischer Vorbereitungsschritte, die sich einfach zu einer *Pipeline* zusammensetzen lassen. Diese Pipeline kann dann auch einfach wieder auf andere Daten angewandt werden, was die Reproduzierbarkeit und Wiederverwendung erleichtert.
 
@@ -635,12 +633,21 @@ housing_rec %>%
 
 Um noch etwas deutlicher den *Fluss* der Transformationen darzustellen, haben wir hier den Zuweisungsoperator in der Form `->` verwendet.
 
+
 ### Seltene Kategorien zusammenfassen
 
 Wir haben oben gesehen, dass es einige kategorielle Variablen gibt, die sehr seltene Ausprägungen aufweisen. Diese fassen wir zu Gruppen zusammen:
 ```{r}
 housing_rec %>% 
   step_other(all_nominals(), threshold = 0.05) -> housing_rec
+```
+
+### Codierung kategorieller Variablen
+
+Bei der linearen Regression werden die Variablenausprägungen $x_i$ mit den Koeffizienten $\beta_i$ multiplziert und addiert. Es muss sich daher bei den Ausprägungen um Zahlenwerte handeln - kategorielle Variablen verwenden aber oft alphanumerische Bezeichnungen für die Ausprägungen. Und selbst wenn die Ausprägungen über Zahlen codiert werden, lässt sich mit diesen Zahlen nicht sinnvoll rechnen. Wir benötigen also einen Weg, die Ausprägungen kategorieller Variablen in Rechengrößen umzuwandeln. Dies wird durch verschiedene Formen der *Codierung* geleistet. Es gibt verschiedene Formen der Codierung, die sich hinsichtlich ihrer statistischen Eigenschafen unterscheiden. Gebräuchlich, wenn auch nicht immer die beste Wahl, sind das *one-hot-encoding* und das *dummy-encoding*. Beim one-hot-encoding einer kategoriellen Variablen $x_i$ führt man für jede Ausprägung $\ell$ eine neue Variable $x_i^\ell$ ein, die über die Werte 0 und 1 für jede Beobachtung codiert, ob die ursprüngliche Ausprägung $\ell$ war (1) oder nicht (0). Die neuen Variablen sind also Indikatorvariablen für die Ausprägungen. Bei $L$ verschiedenen Ausprägungen erhält man  damit beim one-hot-encoding $L$ neue Variablen, die die ursprüngliche Variable im Modell ersetzen. Allerdings ist diese Codierung redundant, denn es würden $L-1$ binäre Variablen ausreichen, um $L$ verschiedene Ausprägungen zu modellieren: Der Fall, dass alle $L-1$ Variablen den Wert 0 haben wird nämlich beim one-hot-encoding nicht genutzt, weil immer genau eine Variable den Wert 1 hat. Beim dummy-encoding hingegen wählt man eine Referenzausprägung und weist dieser implizit die Codierung durch $L-1$ 0-Werte zu. Dies hat auch den Vorteil, dass die durch one-hot-encoding eingeführte lineare Abhängigkeit zwischen den $L$ Variablen und der (impliziten) Variable für den $\beta_0$-Term (man kann sich eine Variable $x_0=1$ denken) vermieden wird. Bei der dummy-Codierung muss man entscheiden, welche Ausprägung zur Referenzausprägung wird. Im Regressionsmodell entspricht $\beta_0$ dann dem Mittelwert der Referenzausprägung. Es ist daher wichtig eine Ausprägung zur Referenzausprägung zu wählen, die im Datensatz häufig vorkommt - ansonsten ist der Mittelwert nicht valide.    
+
+```{r}
+housing_rec %>% step_dummy(all_nominal(), one_hot = FALSE) -> housing_rec
 ```
 
 ### Konstante Variablen entfernen
@@ -663,8 +670,6 @@ housing_rec %>% step_center(all_numeric()) %>% step_scale(all_numeric()) -> hous
 ```
 
 
-
-
 ### Bereinigung um stark korrelierte Variablen
 
 Wie oben erläutert, können stark korrelierte Variablen die Robustheit des Modells und dessen Interpretation verschlechtern. Daher entfernen wir stark korrelierte numerische Variablen:
@@ -672,11 +677,10 @@ Wie oben erläutert, können stark korrelierte Variablen die Robustheit des Mode
 housing_rec %>% step_corr(all_numeric(), threshold = 0.8) -> housing_rec
 ```
 
-
-
-### Behandlung kategorieller Variablen
-one-hot-encoding oder dummy-encoding
-
+### Ausführen des Rezepts
+```{r}
+housing_prep <- prep(housing_rec, training = training_data, verbose = TRUE)
+```
 
 
 
