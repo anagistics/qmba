@@ -99,7 +99,7 @@ Aus dieser Übersicht erfahren wir schon eine ganze Menge:
 
 
     **Aufgabe**
-    Was bedeutet die Typkennzeichnung `fct` in der Ausgabe von `glimpse`? Was unterscheidet eine *kategorielle* Variable von numerischen? Was wäre der Unterschied, wenn die Variable *Heating* als Zeichenkette (`char` bzw. `character`) abgebildet würde?
+    Was bedeutet die Typkennzeichnung `fct` in der Ausgabe von `glimpse`? Was unterscheidet eine *kategoriale* Variable von numerischen? Was wäre der Unterschied, wenn die Variable *Heating* als Zeichenkette (`char` bzw. `character`) abgebildet würde?
     
 ### Erstes Verständnis der Daten
 
@@ -125,9 +125,9 @@ Wir können zu numerischen Werten mittels der Funktion `diagnose_numeric` mehr I
 diagnose_numeric(raw)
 ```
 
-#### Zusammenfassung kategorieller Daten
+#### Zusammenfassung kategorialer Daten
 
-Für kategorielle Variablen lassen sich keine sinnvollen Quantile und auch kein Mittelwert angeben. Hier sieht die Zusammenfassung für die Variable *MS.Zoning* folgendermaßen aus:
+Für kategoriale Variablen lassen sich keine sinnvollen Quantile und auch kein Mittelwert angeben. Hier sieht die Zusammenfassung für die Variable *MS.Zoning* folgendermaßen aus:
 ```{r}
 diagnose_category(raw, MS.Zoning)
 ```
@@ -203,7 +203,7 @@ Das andere Extrem in dieser Einteilung ist die Klasse MNAR: Hier hängt die Wahr
 
 Dazwischen ist die Klasse MAR. Die Ursache für fehlende Werte liegt hier nicht in der Ausprägung der Variablen selbst, sondern hängt mit anderen Variablen zusammen. Die Variable *Garage.Yr.Blt* (Bedeutung: Baujahr der Garage) fehlt bspw. dann, wenn es keine Garage gibt. Das Fehlen liegt aber nicht am Baujahr selbst.
 
-Die Systematisierung ist kein Selbstzweck. Wenn wir wissen, dass der MNAR-Fall vorliegt, sollten wir über eine neue Variable, die wir selber einführen, unser Wissen über die Gründe für das Fehlen explizit in unseren Datensatz aufnehmen. Im Beispiel könnten wir eine kategorielle Variable *street_access* mit den Werten 0 für *keinen Straßenzugang* und 1 für *mit Straßenzugang* einführen. 
+Die Systematisierung ist kein Selbstzweck. Wenn wir wissen, dass der MNAR-Fall vorliegt, sollten wir über eine neue Variable, die wir selber einführen, unser Wissen über die Gründe für das Fehlen explizit in unseren Datensatz aufnehmen. Im Beispiel könnten wir eine kategoriale Variable *street_access* mit den Werten 0 für *keinen Straßenzugang* und 1 für *mit Straßenzugang* einführen. 
 Im Fall von MCAR kann man die fehlenden Werte evtl. gezielt ergänzen. Dieses Vorgehen wird *Imputation* genannt und es gibt verschiedene Verfahren dafür. Andererseits kann man die entsprechenden Instanzen evtl. auch löschen, d.h. für die weitere Betrachtung ignorieren, weil ihr Fehlen keine statistischen Verzerrungen einführt. 
 Bei fehlenden Werten nach MAR würde das Löschen von Instanzen allerdings zu statistischen Verzerrungen führen. Im Beispiel hier würde man alle Immobilien ohne Garage entfernen, wenn man die Instanzen löscht, für die die Variable *Garage.Yr.Blt* keine Ausprägung hat. Damit hätte man kein repräsentatives Bild des Immobilienmarkts mehr.
 
@@ -213,7 +213,7 @@ In der Praxis, gerade bei der Verwendung von Daten aus operativen IT-Systemen, w
 
 #### Umgang mit fehlenden Werten
 
-Wie auch in @Sauer2019 dargestellt wird, ist der richtige Umgang mit fehlenden Werten ein komplexes Thema. Simple Lösungen bestehen darin, die fehlenden Werte durch den Mittelwert der (numerischen) Ausprägungen der Variable zu ersetzen. Bei kategoriellen Variablen kann man analog dazu den Modalwert, d.h. die häufigste Ausprägung, als Ersatzwert verwenden. Aber beide Vorgehen sind stark vereinfachend und können zu unrealistischen Merkmalskombinationen für die betroffenen Beobachtungen führen. Technisch kann so eine Ersetzung in R so umgesetzt werden:
+Wie auch in @Sauer2019 dargestellt wird, ist der richtige Umgang mit fehlenden Werten ein komplexes Thema. Simple Lösungen bestehen darin, die fehlenden Werte durch den Mittelwert der (numerischen) Ausprägungen der Variable zu ersetzen. Bei kategorialen Variablen kann man analog dazu den Modalwert, d.h. die häufigste Ausprägung, als Ersatzwert verwenden. Aber beide Vorgehen sind stark vereinfachend und können zu unrealistischen Merkmalskombinationen für die betroffenen Beobachtungen führen. Technisch kann so eine Ersetzung in R so umgesetzt werden:
 ```{r}
 library(tidyr)
 
@@ -254,7 +254,7 @@ library(mice)
 imp <- ws_mod %>% mice(method = "mean", m = 1, maxit = 1)
 ```
 
-Das Ergebnis der Imputation können wir mit etwas Aufwand visualisieren (das hier geladene Paket `forcats` bietet Funktionen zur Bearbeitung von kategoriellen Variablen):
+Das Ergebnis der Imputation können wir mit etwas Aufwand visualisieren (das hier geladene Paket `forcats` bietet Funktionen zur Bearbeitung von kategorialen Variablen):
 ```{r}
 library(forcats)
 
@@ -322,16 +322,16 @@ Beim Winsorisieren verliert man also keine Datensätze, verändert die vorhanden
 
 ### Seltene Werte
 
-Wie oben erwähnt, können kategorielle Variablen nicht gut numerisch zusammengefasst werden. Die Verteilung der Merkmalsausprägungen ist hingegen sehr wertvoll, weil schnell die häufigen und seltenen Ausprägungen erfasst werden können. Ein einfaches *Histogramm* lässt sich mit dem Paket `ggplot2` folgendermaßen erstellen:
+Wie oben erwähnt, können kategoriale Variablen nicht gut numerisch zusammengefasst werden. Die Verteilung der Merkmalsausprägungen ist hingegen sehr wertvoll, weil schnell die häufigen und seltenen Ausprägungen erfasst werden können. Ein einfaches *Histogramm* lässt sich mit dem Paket `ggplot2` folgendermaßen erstellen:
 ```{r}
 raw %>% ggplot(aes(x = MS.Zoning)) + geom_histogram(stat = "count")
 ```
 
-Aus Histogrammen können wir ableiten, welche Werte je Variable sehr selten auftreten. Gerade bei der Analyse kategorieller Variablen stellt sich oft heraus, dass einige Ausprägungen sehr selten auftreten. Eine statistische Analyse auf Basis dieser Ausprägungen würde statistisch wertlos sein, da die Anzahl der Beobachtungen pro Ausprägung nicht für statistisch valide Aussagen ausreicht. Daher ist es empfehlenswert und üblich, seltene Ausprägungen zu Gruppen zusammenzufassen und eine neue Dummy-Ausprägung, bspw. *sonstige*, für diese einzuführen.
+Aus Histogrammen können wir ableiten, welche Werte je Variable sehr selten auftreten. Gerade bei der Analyse kategorialer Variablen stellt sich oft heraus, dass einige Ausprägungen sehr selten auftreten. Eine statistische Analyse auf Basis dieser Ausprägungen würde statistisch wertlos sein, da die Anzahl der Beobachtungen pro Ausprägung nicht für statistisch valide Aussagen ausreicht. Daher ist es empfehlenswert und üblich, seltene Ausprägungen zu Gruppen zusammenzufassen und eine neue Dummy-Ausprägung, bspw. *sonstige*, für diese einzuführen.
 
-Im Folgenden untersuchen wir die kategoriellen Variablen des *AmesHousing*-Datensatzes. Um eine vollständige Liste der kategoriellen Variablen zu erhalten, hilft die [Dokumentation des AmesHousing-Datensatzes](http://jse.amstat.org/v19n3/decock/DataDocumentation.txt). Übrigens finden sich auf der Seite [Gimme Shelter](https://www.gimme-shelter.com/category/term-2/) recht gute Erklärungen einiger (amerikanischen) Fachbegriffe der Immobilienbranche. 
+Im Folgenden untersuchen wir die kategorialen Variablen des *AmesHousing*-Datensatzes. Um eine vollständige Liste der kategorialen Variablen zu erhalten, hilft die [Dokumentation des AmesHousing-Datensatzes](http://jse.amstat.org/v19n3/decock/DataDocumentation.txt). Übrigens finden sich auf der Seite [Gimme Shelter](https://www.gimme-shelter.com/category/term-2/) recht gute Erklärungen einiger (amerikanischen) Fachbegriffe der Immobilienbranche. 
 
-In der Datendokumentation sehen wir, dass kategorielle Variablen als *Nominal* oder *Ordinal* aufgeführt werden. Wir könnten jetzt manuell eine Liste anlegen, aber als Data Scientists machen wir das natürlich nicht, sondern extrahieren die notwendige Information als Datensatz (die Basis für den hier verwendeten Code kommt von [Ron Sarafian](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)).
+In der Datendokumentation sehen wir, dass kategoriale Variablen als *Nominal* oder *Ordinal* aufgeführt werden. Wir könnten jetzt manuell eine Liste anlegen, aber als Data Scientists machen wir das natürlich nicht, sondern extrahieren die notwendige Information als Datensatz (die Basis für den hier verwendeten Code kommt von [Ron Sarafian](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)).
 
 ```{r}
 library(stringr)
@@ -369,13 +369,13 @@ categorials <- housing_categorials(type_data)
 
 ```
 
-Zunächst modifizieren wir unseren Datensatz so, dass R die kategoriellen Variablen erkennt, indem wir die entsprechenden Spalten zu `factors` konvertieren.
+Zunächst modifizieren wir unseren Datensatz so, dass R die kategorialen Variablen erkennt, indem wir die entsprechenden Spalten zu `factors` konvertieren.
 ```{r}
 raw <- raw %>% mutate_at(vars(all_of(categorials)), as.factor) 
 ```
 
 
-Jetzt können wir uns ansehen, wieviele verschiedene Ausprägungen wir für die kategoriellen Variablen haben. Nachdem wir schon wissen, dass *PID* eine eindeutige Kennung ist, lassen wir diese Variable aus der Betrachtung heraus. Für die graphische Darstellung bringen wir die Daten mit der `pivot_longer`-Funktion in ein *langes Format* (s. auch @Sauer2019), bei dem die Variablen nicht mehr einzeln in Spalten stehen. Zum besseren Verständis wird die Bildung des langen Datensatzes auf zwei Schritte mit zwischenzeitlicher Ausgabe der Tabelle aufgeteilt.
+Jetzt können wir uns ansehen, wieviele verschiedene Ausprägungen wir für die kategorialen Variablen haben. Nachdem wir schon wissen, dass *PID* eine eindeutige Kennung ist, lassen wir diese Variable aus der Betrachtung heraus. Für die graphische Darstellung bringen wir die Daten mit der `pivot_longer`-Funktion in ein *langes Format* (s. auch @Sauer2019), bei dem die Variablen nicht mehr einzeln in Spalten stehen. Zum besseren Verständis wird die Bildung des langen Datensatzes auf zwei Schritte mit zwischenzeitlicher Ausgabe der Tabelle aufgeteilt.
 
 ```{r} 
 categ_freq <- raw %>% dplyr::select(all_of(categorials)) %>% dplyr::select(-PID) %>% 
@@ -391,7 +391,7 @@ categ_freq %>%
     ggplot(aes(x = reorder(Variable, Werte), y = Werte)) + geom_col() + coord_flip()
 ```
 
-Im nächsten Schritt gucken wir uns alle kategoriellen Variablen an, die 6 oder mehr verschiedene Ausprägungen haben. Für diese erstellen wir jeweils ein Histogramm der Ausprägungen, um zu sehen, ob es seltene Ausprägungen gibt.
+Im nächsten Schritt gucken wir uns alle kategorialen Variablen an, die 6 oder mehr verschiedene Ausprägungen haben. Für diese erstellen wir jeweils ein Histogramm der Ausprägungen, um zu sehen, ob es seltene Ausprägungen gibt.
 ```{r}
 rel_categs <- categ_freq %>% filter(Werte >= 6) %>% pull(Variable)
 
@@ -412,12 +412,12 @@ var_cl_plots <- lapply(seq_along(categ_levels), plot_level_freq, categ_levels)
 wrap_plots(var_cl_plots, ncol = 2)
 ```
 
-Zwar sind nicht alle Plots gut lesbar, aber wir sehen, was wir wissen wollten: Es gibt für viele kategorielle Variablen Gruppen von Ausprägungen, die sehr selten vorkommen.
-Weiter unten bei der Datenvorverarbeitung für die Modellierung, werden wir daher solche kategoriellen Variablen entsprechend bearbeiten und seltene Ausprägungen zusammenfassen.
+Zwar sind nicht alle Plots gut lesbar, aber wir sehen, was wir wissen wollten: Es gibt für viele kategoriale Variablen Gruppen von Ausprägungen, die sehr selten vorkommen.
+Weiter unten bei der Datenvorverarbeitung für die Modellierung, werden wir daher solche kategorialen Variablen entsprechend bearbeiten und seltene Ausprägungen zusammenfassen.
 
 ## Informationsbeiträge von Variablen
 
-Nachdem wir uns im vorherigen Abschnitt mit kategoriellen Variablen befasst haben, kehren wir hier wieder zurück zu den numerischen Variablen. Wir sollten uns in Erinnerung rufen, das wir letztlich ein Modell für den Verkaufspreis von Immobilien entwickeln wollen. Dahinter steckt die Annahme, dass verschiedene Eigenschaften bzw. Eigenschaftskombinationen von Immobilien Einfluss auf den Preis haben. 
+Nachdem wir uns im vorherigen Abschnitt mit kategorialen Variablen befasst haben, kehren wir hier wieder zurück zu den numerischen Variablen. Wir sollten uns in Erinnerung rufen, das wir letztlich ein Modell für den Verkaufspreis von Immobilien entwickeln wollen. Dahinter steckt die Annahme, dass verschiedene Eigenschaften bzw. Eigenschaftskombinationen von Immobilien Einfluss auf den Preis haben. 
 
 ### Beitrag einzelner Variablen
 
@@ -425,7 +425,7 @@ Wir können davon ausgehen, dass Eigenschaften, die für alle Immobilien gleich 
 
 Wenn wir nur einzelne Variablen betrachten, können wir als Statistik für den Informationsgehalt numerischer Variablen die Varianz der Ausprägungen (Werte) verwenden. Die Spalte *Order* können wir dabei ignorieren, weil sie einfach nur eine Ordnungszahl enthält.
 
-Als ersten Schritt visualisieren wir die Verteilungen (genauer: Dichtefunktionen) der numerischen Variablen. Nachdem wir oben schon die kategoriellen Variablen identifiziert haben, können wir die numerischen einfach als Differenz zur vollständigen Variablenmenge ermitteln:
+Als ersten Schritt visualisieren wir die Verteilungen (genauer: Dichtefunktionen) der numerischen Variablen. Nachdem wir oben schon die kategorialen Variablen identifiziert haben, können wir die numerischen einfach als Differenz zur vollständigen Variablenmenge ermitteln:
 
 ```{r}
 library(tidyselect)
@@ -576,7 +576,7 @@ Damit erreichen wir die Modellqualität des ersten Modells und senken die VIF-We
 
 ## Datenvorverarbeitung
 
-Nachdem wir ein besseres Verständnis für die Daten und die Zusammenhänge zwischen den Variablen erhalten haben, können und müssen wir vor der Modellerstellung noch weitere Vorverarbeitungsschritte vornehmen. Tatsächlich kann dieser Schritt nicht ohne Verständnis für das angestrebte Modell durchgeführt werden: Einige Arten von Modellen können bspw. nicht mit fehlenden Werten oder kategoriellen Variablen umgehen (beides gilt für lineare und logistische Regression - hier darf man aber nicht das Verfahren an sich mit der Implementierung des Verfahrens verwechseln. Diese kann bspw. automatisch Datensätze mit fehlenden Werten entfernen und dann wirkt das Verfahren nach außen hin so, als könnte es mit fehlenden Werten umgehen). Nachdem man zu Beginn oftmals noch nicht sicher weiß, welche Art von Modell das beste Ergebnis liefert, ist die Datenvorbereitung in der Praxis ein iterativer Prozess. 
+Nachdem wir ein besseres Verständnis für die Daten und die Zusammenhänge zwischen den Variablen erhalten haben, können und müssen wir vor der Modellerstellung noch weitere Vorverarbeitungsschritte vornehmen. Tatsächlich kann dieser Schritt nicht ohne Verständnis für das angestrebte Modell durchgeführt werden: Einige Arten von Modellen können bspw. nicht mit fehlenden Werten oder kategorialen Variablen umgehen (beides gilt für lineare und logistische Regression - hier darf man aber nicht das Verfahren an sich mit der Implementierung des Verfahrens verwechseln. Diese kann bspw. automatisch Datensätze mit fehlenden Werten entfernen und dann wirkt das Verfahren nach außen hin so, als könnte es mit fehlenden Werten umgehen). Nachdem man zu Beginn oftmals noch nicht sicher weiß, welche Art von Modell das beste Ergebnis liefert, ist die Datenvorbereitung in der Praxis ein iterativer Prozess. 
 
 Wir werden uns, wie oben auch schon praktiziert, hier mit einem linearen Regressionsmodell beschäftigen. Unser Modell wird also die Form
 $$ \hat{y} = \beta_0 + \sum_{i=1}^n \beta_i\cdot x_i + \varepsilon$$ haben.
@@ -636,15 +636,15 @@ Um noch etwas deutlicher den *Fluss* der Transformationen darzustellen, haben wi
 
 ### Seltene Kategorien zusammenfassen
 
-Wir haben oben gesehen, dass es einige kategorielle Variablen gibt, die sehr seltene Ausprägungen aufweisen. Diese fassen wir zu Gruppen zusammen:
+Wir haben oben gesehen, dass es einige kategoriale Variablen gibt, die sehr seltene Ausprägungen aufweisen. Diese fassen wir zu Gruppen zusammen:
 ```{r}
 housing_rec %>% 
   step_other(all_nominals(), threshold = 0.05) -> housing_rec
 ```
 
-### Codierung kategorieller Variablen
+### Codierung kategorialer Variablen
 
-Bei der linearen Regression werden die Variablenausprägungen $x_i$ mit den Koeffizienten $\beta_i$ multiplziert und addiert. Es muss sich daher bei den Ausprägungen um Zahlenwerte handeln - kategorielle Variablen verwenden aber oft alphanumerische Bezeichnungen für die Ausprägungen. Und selbst wenn die Ausprägungen über Zahlen codiert werden, lässt sich mit diesen Zahlen nicht sinnvoll rechnen. Wir benötigen also einen Weg, die Ausprägungen kategorieller Variablen in Rechengrößen umzuwandeln. Dies wird durch verschiedene Formen der *Codierung* geleistet. Es gibt verschiedene Formen der Codierung, die sich hinsichtlich ihrer statistischen Eigenschafen unterscheiden. Gebräuchlich, wenn auch nicht immer die beste Wahl, sind das *one-hot-encoding* und das *dummy-encoding*. Beim one-hot-encoding einer kategoriellen Variablen $x_i$ führt man für jede Ausprägung $\ell$ eine neue Variable $x_i^\ell$ ein, die über die Werte 0 und 1 für jede Beobachtung codiert, ob die ursprüngliche Ausprägung $\ell$ war (1) oder nicht (0). Die neuen Variablen sind also Indikatorvariablen für die Ausprägungen. Bei $L$ verschiedenen Ausprägungen erhält man  damit beim one-hot-encoding $L$ neue Variablen, die die ursprüngliche Variable im Modell ersetzen. Allerdings ist diese Codierung redundant, denn es würden $L-1$ binäre Variablen ausreichen, um $L$ verschiedene Ausprägungen zu modellieren: Der Fall, dass alle $L-1$ Variablen den Wert 0 haben wird nämlich beim one-hot-encoding nicht genutzt, weil immer genau eine Variable den Wert 1 hat. Beim dummy-encoding hingegen wählt man eine Referenzausprägung und weist dieser implizit die Codierung durch $L-1$ 0-Werte zu. Dies hat auch den Vorteil, dass die durch one-hot-encoding eingeführte lineare Abhängigkeit zwischen den $L$ Variablen und der (impliziten) Variable für den $\beta_0$-Term (man kann sich eine Variable $x_0=1$ denken) vermieden wird. Bei der dummy-Codierung muss man entscheiden, welche Ausprägung zur Referenzausprägung wird. Im Regressionsmodell entspricht $\beta_0$ dann dem Mittelwert der Referenzausprägung. Es ist daher wichtig eine Ausprägung zur Referenzausprägung zu wählen, die im Datensatz häufig vorkommt - ansonsten ist der Mittelwert nicht valide.    
+Bei der linearen Regression werden die Variablenausprägungen $x_i$ mit den Koeffizienten $\beta_i$ multiplziert und addiert. Es muss sich daher bei den Ausprägungen um Zahlenwerte handeln - kategoriale Variablen verwenden aber oft alphanumerische Bezeichnungen für die Ausprägungen. Und selbst wenn die Ausprägungen über Zahlen codiert werden, lässt sich mit diesen Zahlen nicht sinnvoll rechnen. Wir benötigen also einen Weg, die Ausprägungen kategorialer Variablen in Rechengrößen umzuwandeln. Dies wird durch verschiedene Formen der *Codierung* geleistet. Es gibt verschiedene Formen der Codierung, die sich hinsichtlich ihrer statistischen Eigenschafen unterscheiden. Gebräuchlich, wenn auch nicht immer die beste Wahl, sind das *one-hot-encoding* und das *dummy-encoding*. Beim one-hot-encoding einer kategorialen Variablen $x_i$ führt man für jede Ausprägung $\ell$ eine neue Variable $x_i^\ell$ ein, die über die Werte 0 und 1 für jede Beobachtung codiert, ob die ursprüngliche Ausprägung $\ell$ war (1) oder nicht (0). Die neuen Variablen sind also Indikatorvariablen für die Ausprägungen. Bei $L$ verschiedenen Ausprägungen erhält man  damit beim one-hot-encoding $L$ neue Variablen, die die ursprüngliche Variable im Modell ersetzen. Allerdings ist diese Codierung redundant, denn es würden $L-1$ binäre Variablen ausreichen, um $L$ verschiedene Ausprägungen zu modellieren: Der Fall, dass alle $L-1$ Variablen den Wert 0 haben wird nämlich beim one-hot-encoding nicht genutzt, weil immer genau eine Variable den Wert 1 hat. Beim dummy-encoding hingegen wählt man eine Referenzausprägung und weist dieser implizit die Codierung durch $L-1$ 0-Werte zu. Dies hat auch den Vorteil, dass die durch one-hot-encoding eingeführte lineare Abhängigkeit zwischen den $L$ Variablen und der (impliziten) Variable für den $\beta_0$-Term (man kann sich eine Variable $x_0=1$ denken) vermieden wird. Bei der dummy-Codierung muss man entscheiden, welche Ausprägung zur Referenzausprägung wird. Im Regressionsmodell entspricht $\beta_0$ dann dem Mittelwert der Referenzausprägung. Es ist daher wichtig eine Ausprägung zur Referenzausprägung zu wählen, die im Datensatz häufig vorkommt - ansonsten ist der Mittelwert nicht valide.    
 
 ```{r}
 housing_rec %>% step_dummy(all_nominal(), one_hot = FALSE) -> housing_rec
@@ -652,7 +652,7 @@ housing_rec %>% step_dummy(all_nominal(), one_hot = FALSE) -> housing_rec
 
 ### Konstante Variablen entfernen
 
-Der nächste Schritt entfernt die Variablen, die entweder eine sehr kleine Varianz oder eine sehr stark dominierende Ausprägung haben, d.h. wir wenden die Funktion `step_nvz` sowohl auf numerische als auch auf kategorielle oder nominale Variablen an.  
+Der nächste Schritt entfernt die Variablen, die entweder eine sehr kleine Varianz oder eine sehr stark dominierende Ausprägung haben, d.h. wir wenden die Funktion `step_nvz` sowohl auf numerische als auch auf kategoriale oder nominale Variablen an.  
 
 ```{r}
 housing_rec %>% 
