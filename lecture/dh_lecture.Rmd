@@ -8,7 +8,20 @@ bibliography: ["citation.bib"]
 biblio-style: "apalike"
 link-citations: true
 ---
-# Data Science Praxis 
+
+<style>
+div.blackbox {
+  padding: 1em;
+  background: lightblue;
+  color: black;
+  border: 2px solid blue;
+  border-radius: 10px;
+}
+
+div.center {
+  text-align: center;
+}
+</style>
 
 ## Einführung
 
@@ -22,7 +35,14 @@ Die *HaiBank AG* möchte im Niedrigzinsumfeld und angesichts steigender Immobili
 
 ### Aufgabenstellung
 
+<div class="blackbox">
+<div class="center">
+**Aufgabe**
+</div>
+
 Ihre Aufgabe besteht darin, ein **Prognosemodell für Immobilienpreise** und einen Prototyp für die zugehörige **Anwendung** zu entwickeln, die dieses Prognosemodell verwendet.
+</div>
+
 
 Weil Ihre hauseigene IT auf absehbare Zeit noch damit beschäftigt ist, die bislang getrennt in jeder Filiale in Excel-Dateien festgehaltenen Immobiliengeschäfte in eine zentrale Datenbank zu überführen, haben Sie sich aus dem Internet eine frei verfügbare Datensammluung von Immobilienpreisen besorgt. Mit Hilfe dieser Daten können Sie schon einmal den ganzen Prozess der Modellentwicklung durchlaufen und einen Prototypen erstellen, damit Ihr Management auch nachvollziegen kann, wie die fertige Lösung aussehen wird.
 
@@ -33,15 +53,6 @@ Als technische Plattform stehen Ihnen
 * das auf *R* basierende Framework *flexdashboard* 
 
 für die Entwicklung von Modell und Anwendung zur Verfügung.
-
-### Setup
-
-Um mit *R* zu starten bietet es sich an, ein Konto bei *RStudio Cloud* anzulegen. Damit haben Sie eine *RStudio* Entwicklungsumgebung, die Sie über Ihren Browser nutzen können und eine Basisinstallation von *R* als Ausgangsbasis. Im Rahmen dieses Kurses können Sie einem bereits bestehenden *Workspace* beitreten (Anleitung s. unten). 
-
-Alternativ können Sie *R* und *RStudio* auch lokal auf Ihrem Rechner installieren. Wie dies gemacht wird, erfahren Sie unter [R und RStudio installieren](https://rstudio.com/products/rstudio/download/).
-
-#### RStudio Cloud Workspace
-Hier die Erklärung, wie das funktioniert
 
 ### Grundsätzliches zur Arbeit mit *R*
 
@@ -581,8 +592,8 @@ Nachdem wir ein besseres Verständnis für die Daten und die Zusammenhänge zwis
 Wir werden uns, wie oben auch schon praktiziert, hier mit einem linearen Regressionsmodell beschäftigen. Unser Modell wird also die Form
 $$ \hat{y} = \beta_0 + \sum_{i=1}^n \beta_i\cdot x_i + \varepsilon$$ haben.
 Dabei ist $\hat{y}$ die Schätzung für die *Zielvariable* (hier der Verkaufspreis), die $x_i$ sind $n$ unabhängige Variablen (die Prädiktoren) und $\varepsilon$ ist ein Fehlerterm. 
-Gesucht sind die Koeffizienten $\beta_0$ (konstanter Term, *intercept*) und $\beta_i$. Ermittelt werden diese Koeffizienten anhand von $N$ *Trainingsdatensätzen* $(y^j, x_1^j, x_2^j,\ldots,x_n^j), j = 1,\ldots,N$ durch Lösen des Optimierungsproblems 
-$$ \min_{\beta_0, \beta_1,\ldots,\beta_n} \sum_{j=1}^N \left(y^j - \left(\beta_0 + \sum_{i=1}^n \beta_i\cdot x_i^j\right)\right)^2. $$
+Gesucht sind die Koeffizienten $\beta_0$ (konstanter Term, *intercept*) und $\beta_i$. Ermittelt werden diese Koeffizienten anhand von $N$ *Trainingsdatensätzen* $(y^{(j)}, x_1^{(j)}, x_2^{(j)},\ldots,x_n^{(j)}), j = 1,\ldots,N$ durch Lösen des Optimierungsproblems 
+$$ \min_{\beta_0, \beta_1,\ldots,\beta_n} \sum_{j=1}^N \left(y^{(j)} - \left(\beta_0 + \sum_{i=1}^n \beta_i\cdot x_i^{(j)}\right)\right)^2. $$
 Für dieses Optimierungsproblem kann man geschlossene Ausdrücke für die optimalen Koeffizienten $\beta_0^*, \beta_1^*,\ldots, \beta_n^*$ angeben und die Lösung somit effizient berechnen (s. @Sheather2009).
 
 Für die Datenvorbereitung des Modells werden wir das `recipes`-Paket verwenden. Dieses Paket bietet schon eine Vielzahl typischer Vorbereitungsschritte, die sich einfach zu einer *Pipeline* zusammensetzen lassen. Diese Pipeline kann dann auch einfach wieder auf andere Daten angewandt werden, was die Reproduzierbarkeit und Wiederverwendung erleichtert.
@@ -600,7 +611,8 @@ names(housing_data) <- make.names(names(housing_data))
 type_data <- housing_variable_types()
 categorials <- housing_categorials(type_data)
 
-housing_data <- housing_data %>% mutate_at(vars(all_of(categorials)), as.factor) 
+housing_data <- housing_data %>% mutate_at(vars(all_of(categorials)), as.factor) %>% 
+  dplyr::select(-Order, -PID)
 
 ```
 
@@ -639,7 +651,7 @@ Um noch etwas deutlicher den *Fluss* der Transformationen darzustellen, haben wi
 Wir haben oben gesehen, dass es einige kategoriale Variablen gibt, die sehr seltene Ausprägungen aufweisen. Diese fassen wir zu Gruppen zusammen:
 ```{r}
 housing_rec %>% 
-  step_other(all_nominals(), threshold = 0.05) -> housing_rec
+  step_other(all_nominal(), threshold = 0.05) -> housing_rec
 ```
 
 ### Codierung kategorialer Variablen
@@ -666,7 +678,8 @@ Bei der linearen Regression ist der Erwartungswert der Zielvariable $y$ gleich d
 Manchmal *skaliert* man die Variablen auch noch zusätzlich zur Zentrierung: Das bedeutet, dass man die Werte auch noch durch die Standardabweichung dividiert. In der Statistik nennt man beide Schritte zusammen *z-Transformation*. Damit sind die Verteilungen der Variablenwerte vergleichbar und die Koeffizienten $\beta_i$ sind damit auch einfacher vergleichbar. Tatsächlich führt man durch den Schritt eine Einheitenumrechnung durch und alle Koeffizienten $\beta_i$ haben dadurch dieselbe Einheit.
 
 ```{r}
-housing_rec %>% step_center(all_numeric()) %>% step_scale(all_numeric()) -> housing_rec
+housing_rec %>% step_center(all_predictors()) %>%
+  step_scale(all_predictors()) -> housing_rec
 ```
 
 
@@ -674,23 +687,136 @@ housing_rec %>% step_center(all_numeric()) %>% step_scale(all_numeric()) -> hous
 
 Wie oben erläutert, können stark korrelierte Variablen die Robustheit des Modells und dessen Interpretation verschlechtern. Daher entfernen wir stark korrelierte numerische Variablen:
 ```{r}
-housing_rec %>% step_corr(all_numeric(), threshold = 0.8) -> housing_rec
+housing_rec %>% step_corr(all_predictors(), threshold = 0.8) -> housing_rec
 ```
-
-### Ausführen des Rezepts
-```{r}
-housing_prep <- prep(housing_rec, training = training_data, verbose = TRUE)
-```
-
-
 
 ## Modellbildung
 
+Ähnlich wie die Vorverarbeitung, erstellt man mit dem `parsnip`-Paket (wie `recipes` gehört dieses Paket der Paketfamilie `tidymodels` an) eine Spezifikation für ein Modell, das man dann mittels einer *engine*, d.h. einer konkreten Verfahrensimplementierung, berechnet.
+
+```{r}
+library(parsnip)
+
+lr_mod <- linear_reg(mode = "regression") %>% set_engine("lm")
+```
+
+### Verbinden von Daten und Modell
+
+Wir verbinden Modellspezifikation und Rezept, d.h. die Datenvorverarbeitungsspezifikation, mittels eines *workflows*:
+```{r}
+library(workflows)
+
+(housing_wf <- workflow() %>% add_model(lr_mod) %>% add_recipe(housing_rec))
+
+```
+
+### Modell trainieren
+```{r train_housing}
+housing_fit <- housing_wf %>% fit(data = training_data) 
+
+summary(housing_fit$fit$fit$fit)
+
+```
+
+### Modell testen
+
+Das Testen des Modells ist die Grundlage für die Bewertung der Modellqualität. Dem trainierten Modell werden dazu die zuvor dem Modell unbekannten Testdaten übergeben und das Modell berechnet einen Schätzwert für die Zielvariable. Allerdings kann man dem Modell die Testdaten nicht einfach in der Form übergeben, in der die Daten vorlagen: Stattdessen muss man die Vorverarbeitungsschritte, die man für den Trainingsdatensatz durchgeführt hat, auch für die Testdaten anwenden. Insbesondere müssen auch im Testdatensatz die Variablen zentriert und skaliert werden, weil dies für den Trainingsdatensatz auch durchgeführt wurde: Für die Vorverarbeitung des Testdatensatzes werden also die Mittelwerte und Standardabweichungen der entsprechenden Variablen des Trainingsdatensatzes benötigt. Ohne die Verwendung der Methoden aus dem `tidymodels`-Paket, müssten wir uns diese Parameter an geeigneter Stelle merken und anwenden. Dieser Schritt wird uns von den `tidymodels`-Methoden abgenommen, so dass wir für das Testen des Modells einfach schreiben können:
+```{r predict_housing}
+housing_pred <- predict(housing_fit, test_data)
+```
+
+Eine Vorschau auf die Vorhersagegüte liefert uns:
+```{r}
+(pred_truth_tab <- housing_pred %>% bind_cols(test_data %>% dplyr::select(SalePrice)))
+```
+
+### Modell evaluieren
+
+Um genauer zu untersuchen, wie gut das Modell ist, verwenden wir verschiedene Metriken. Das Paket `yardstick`, das ebenfalls zu `tidymodels` gehört, bietet hier schon eine gute Auswahl:
+
+```{r}
+library(yardstick)
+
+metrics(pred_truth_tab, SalePrice, .pred)
+
+```
+
+*rsq* steht hier für das Bestimmtheitsmaß $R^2$, *rmse* für *root mean squared error*, d.h. 
+$\sqrt{\frac{1}{N}\sum_{j=1}^{N}(y^{(j)}- \hat{y}^{(j)})^2}$, und *mae* für den mittleren absoluten Fehler, d.h. $\frac{1}{N}\sum_{j=1}^{N}|y^{(j)}- \hat{y}^{(j)}|$. 
+
+Bei linearer Regression empfiehlt es sich, die Ergebnisse graphisch zu veranschaulichen.
+
+```{r}
+pred_truth_tab %>% ggplot(aes(x = SalePrice, y = .pred)) + geom_point() + geom_smooth(method = "lm")
+```
+
+Die Vorhersagefehler sollten, entsprechend der Modellannahme, normalverteilt sein:
+
+```{r}
+residuals <- pred_truth_tab %>% mutate(err = SalePrice - .pred)
+residuals %>% ggplot(aes(x = err)) + geom_density()
+```
+
+Man verwendet häufig den *Q-Q-Plot*, um diese Annahme zu prüfen: Dabei werden die geordneten *standardisierten Fehler* über den erwarteten geordneten Werten der Standardnormalverteilung abgetragen. Zuerst müssen wir daher die standardisierten Fehler (s. @Sheather2009) berechnen:
+
+```{r}
+std_res <- MASS::stdres(housing_fit$fit$fit$fit)
+
+qqnorm(std_res)
+abline(0, 1, col = "red")
+```
+
+Wir sehen, dass die standardisierten Residuen (Fehler) für einen Großteil des Wertebereichs schon sehr gut den Erwartungen, nämlich einer Standardnormalverteilung zu folgen, entsprechen. Aber es gibt auch Ausnahmen und wir prüfen daher die Standardresiduen abgetragen über den Indices der Beobachtungen. Zusätzlich plotten wir in rot den Verkaufspreis.
+
+```{r}
+idx_stdres <- tibble::enframe(std_res, name = "Index", value = "StdRes") %>% 
+  mutate(Index = as.integer(Index)) %>% 
+  bind_cols(housing_fit$pre$mold$outcomes)
+
+
+idx_stdres %>% 
+  arrange(Index) %>% 
+  ggplot(aes(x = Index, y = StdRes)) +
+  geom_point() + 
+  geom_linerange(aes(ymax = StdRes, ymin = 0)) +
+  geom_label(aes(x = Index, y = StdRes, label = Index), size = 3, 
+            data = idx_stdres %>% filter(abs(StdRes) > 5),
+            nudge_y = 0.5) +
+  geom_line(aes(x = Index, y = SalePrice), color = "red", alpha = 0.5) +
+  scale_x_continuous(breaks = c(1, seq(200, 2200, 200)))
+```
+
+Das Modell scheint besonders bei höheren Verkaufspreisen auch größere Fehler aufzuweisen, was wir überprüfen:
+
+```{r}
+idx_stdres %>% 
+  ggplot(aes(x = SalePrice, y = StdRes )) +
+  geom_point(alpha = 0.3) 
+```
+
+
+```{r}
+library(car)
+
+influenceIndexPlot(housing_fit$fit$fit$fit)
+```
+
+
+
+```{r}
+qqnorm(residuals$err)
+```
+
+
+
+
+qq-norm-plot
+
+
+
 Lasso-Modell: Gleichzeitig Features auswählen und Modell fitten
 
-### Trainings- und Testdaten
 
-### Modell erstellen
 
 ## Modellinterpretation
 
@@ -698,23 +824,11 @@ Lasso-Modell: Gleichzeitig Features auswählen und Modell fitten
 
 
 
-
-Aus der Dokumentation zu dem Paket, die man mittels
-```{r eval=FALSE, include=TRUE}
-??AmesHousing
+## Session Info
+```{r sessioninfo}
+sessionInfo()
 ```
 
-aufrufen kann, erfahren wir, dass wir mittels der Funktion `make_ames` eine schon etwas aufbereitete Datenbasis erhalten können:
-
-```{r eval=FALSE, include=TRUE}
-data <- make_ames()
-```
-
-
-
-
-
-## Notizen
 
 * [Data Doku](http://jse.amstat.org/v19n3/decock/DataDocumentation.txt)
 * [GeoLokationen im Artikel](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)
