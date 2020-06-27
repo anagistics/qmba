@@ -23,6 +23,13 @@ div.center {
 }
 </style>
 
+```{r setup, include = FALSE}
+library(learnr)
+tutorial_options(exercise.timelimit = 60)
+
+```
+
+
 ## Einführung
 
 In dieser Vorlesung geht es um eine Einführung in die praktische Arbeit mit Data Science Methoden. Wir befassen uns anhand eines Szenarios zunächst mit explorativer Datenanalyse, entwickeln dann systematisch ein Modell des maschinellen Lernens und analysieren danach die erhaltenen Ergebnisse. 
@@ -66,22 +73,26 @@ Neben Python ist *R* eine der derzeit populärsten Sprachen für Datenanalye, St
 
 Wenn man eine neue Datenquelle erschließen möchte, bestehen die ersten Schritte aus der *explorativen Datenanalye*. Hierbei geht es darum, ein Verständnis für die Daten zu bekommen und insbesondere Fehler und Auffälligkeiten zu entdecken.
 
-Wir laden zunächst die Immobiliendaten über ein *R*-Paket:
+Wir laden zunächst die Immobiliendaten über das R-Paket `AmesHousing`, weisen den Daten den Namen `raw` zu und korrigieren die Bezeichnungen der Spalten des Datensatzes, so dass diese im weiteren Verlauf gültige R-Bezeichner ergeben:
+
 ```{r load_data, exercise = TRUE}
 library(AmesHousing)
-```
 
-Die Daten werden wir unter der Bezeichnung `raw` weiter untersuchen:
-```{r assign_data, exercise = TRUE}
 raw <- ames_raw
 names(raw) <- make.names(names(raw))
 ```
 
-Die zweite Zeile im obigen Codeblock dient dazu, die Bezeichner der Variablen (Spalten des Datensatzes) so umzuwandeln, dass keine Leerzeichen mehr enthalten sind, die uns sonst an späterer Stelle stören würden.
+```{r prep_raw, include = FALSE}
+library(AmesHousing)
+raw <- ames_raw
+names(raw) <- make.names(names(raw))
+```
+
+Die letzte Zeile im obigen Codeblock dient dazu, die Bezeichner der Variablen (Spalten des Datensatzes) so umzuwandeln, dass diese bspw. keine Leerzeichen mehr enthalten, die uns sonst an späterer Stelle stören würden.
 
 Um uns einen ersten Eindruck von den Daten zu verschaffen, benutzen wir die Funktion `glimpse` aus dem `dplyr`-Paket. Dieses Paket ist grundsätzlich eine gute Wahl für die Datenanalyse, weil es zahlreiche recht intuitiv anwendbare Funktionen für Datentransformationen, Datenfilterung und -aggregation bietet.
 
-```{r glimpse, exercise = TRUE}
+```{r glimpse, exercise = TRUE, exercise.setup = "prep_raw"}
 library(dplyr)
 
 glimpse(raw)
@@ -574,238 +585,4 @@ vif(gwbf_mod)
 ```
 
 Damit erreichen wir die Modellqualität des ersten Modells und senken die VIF-Werte, d.h. wir haben ein einfacheres Modell gleicher Qualität erreicht, das besser erklärbar und robuster ist (weniger Varianz in den Regressionskoeffizienten). Aber der Koeffizient für die Schlafzimmerzahl ist immer noch negativ...
-
-## Datenvorverarbeitung
-
-Nachdem wir ein besseres Verständnis für die Daten und die Zusammenhänge zwischen den Variablen erhalten haben, können und müssen wir vor der Modellerstellung noch weitere Vorverarbeitungsschritte vornehmen. Tatsächlich kann dieser Schritt nicht ohne Verständnis für das angestrebte Modell durchgeführt werden: Einige Arten von Modellen können bspw. nicht mit fehlenden Werten oder kategorialen Variablen umgehen (beides gilt für lineare und logistische Regression - hier darf man aber nicht das Verfahren an sich mit der Implementierung des Verfahrens verwechseln. Diese kann bspw. automatisch Datensätze mit fehlenden Werten entfernen und dann wirkt das Verfahren nach außen hin so, als könnte es mit fehlenden Werten umgehen). Nachdem man zu Beginn oftmals noch nicht sicher weiß, welche Art von Modell das beste Ergebnis liefert, ist die Datenvorbereitung in der Praxis ein iterativer Prozess. 
-
-Wir werden uns, wie oben auch schon praktiziert, hier mit einem linearen Regressionsmodell beschäftigen. Unser Modell wird also die Form
-$$ \hat{y} = \beta_0 + \sum_{i=1}^n \beta_i\cdot x_i + \varepsilon$$ haben.
-Dabei ist $\hat{y}$ die Schätzung für die *Zielvariable* (hier der Verkaufspreis), die $x_i$ sind $n$ unabhängige Variablen (die Prädiktoren) und $\varepsilon$ ist ein Fehlerterm. 
-Gesucht sind die Koeffizienten $\beta_0$ (konstanter Term, *intercept*) und $\beta_i$. Ermittelt werden diese Koeffizienten anhand von $N$ *Trainingsdatensätzen* $(y^{(j)}, x_1^{(j)}, x_2^{(j)},\ldots,x_n^{(j)}), j = 1,\ldots,N$ durch Lösen des Optimierungsproblems 
-$$ \min_{\beta_0, \beta_1,\ldots,\beta_n} \sum_{j=1}^N \left(y^{(j)} - \left(\beta_0 + \sum_{i=1}^n \beta_i\cdot x_i^{(j)}\right)\right)^2. $$
-Für dieses Optimierungsproblem kann man geschlossene Ausdrücke für die optimalen Koeffizienten $\beta_0^*, \beta_1^*,\ldots, \beta_n^*$ angeben und die Lösung somit effizient berechnen (s. @Sheather2009).
-
-Für die Datenvorbereitung des Modells werden wir das `recipes`-Paket verwenden. Dieses Paket bietet schon eine Vielzahl typischer Vorbereitungsschritte, die sich einfach zu einer *Pipeline* zusammensetzen lassen. Diese Pipeline kann dann auch einfach wieder auf andere Daten angewandt werden, was die Reproduzierbarkeit und Wiederverwendung erleichtert.
-
-Wir beginnen das *Rezept* mit der Aufteilung des Datensatzes in einen Trainings- und einen Testdatensatz. Auf Basis des Trainingsdatensatzes wird das Modell *gelernt* und die Güte des gelernten Modells wird dann anhand des Testdatensatzes gemessen. Damit ist sichergestellt, dass wir messen, wie gut das Modell die wesentlichen Eigenschaften der Daten abbildet und generalisieren kann: Schließlich sind wir daran interessiert, eine Verkaufspreisvorhersage für zuvor ungesehene Daten zu erhalten.
-
-Damit wir aber sicher sind, dass wir auch auf den richtigen Daten arbeiten, wiederholen wir an dieser Stelle ein paar der Erstellungsschritte von oben:
-
-### Grundlage (wieder)herstellen
-
-```{r recreate_housing_data, exercise = TRUE}
-housing_data <- ames_raw
-names(housing_data) <- make.names(names(housing_data))
-
-type_data <- housing_variable_types()
-categorials <- housing_categorials(type_data)
-
-housing_data <- housing_data %>% mutate_at(vars(all_of(categorials)), as.factor) %>% 
-  dplyr::select(-Order, -PID)
-
-```
-
-### Rezept anlegen
-```{r create_data_split, exercise = TRUE}
-library(rsample)
-
-set.seed(123456)
-
-data_split <- initial_split(housing_data)
-
-training_data <- training(data_split)
-test_data <- testing(data_split)
-```
-
-Das Rezept wird angelegt, indem wir die Zielvariable angeben und pauschal alle anderen Variablen als potentielle Prädiktoren vorsehen. Im weiteren Verlauf werden wir das Rezept durch die Verkettung mit `step_*`-Funktionen weiter spezifizieren. Viele der `step_*`-Funktionen aus dem `recipes`-Paket bieten noch Parameter, um das Verhalten weiter zu beeinflussen. Die Dokumentation zum `recipes`-Paket listet unter https://recipes.tidymodels.org/articles/Ordering.html auch eine empfohlene Reihenfolge der Schritte auf.
-
-```{r create_recipe, exercise = TRUE}
-library(recipes)
-
-housing_rec <- recipe(SalePrice ~ ., data = training_data)
-```
-
-### Imputation fehlender Werte
-Zunächst werden wir fehlende Werte mit einer komplexeren Imputationsstrategie, nämlich *kNN-Imputation* (s. u.a. @Beretta2016), durch plausible Werte ersetzen:
-```{r recipe_step_imputation, exercise = TRUE}
-housing_rec %>% 
-  step_knnimpute(all_predictors(), neighbors = 3) -> housing_rec
-```
-
-Um noch etwas deutlicher den *Fluss* der Transformationen darzustellen, haben wir hier den Zuweisungsoperator in der Form `->` verwendet.
-
-
-### Seltene Kategorien zusammenfassen
-
-Wir haben oben gesehen, dass es einige kategoriale Variablen gibt, die sehr seltene Ausprägungen aufweisen. Diese fassen wir zu Gruppen zusammen:
-```{r recipe_step_rare_levels, exercise = TRUE}
-housing_rec %>% 
-  step_other(all_nominal(), threshold = 0.05) -> housing_rec
-```
-
-### Codierung kategorialer Variablen
-
-Bei der linearen Regression werden die Variablenausprägungen $x_i$ mit den Koeffizienten $\beta_i$ multiplziert und addiert. Es muss sich daher bei den Ausprägungen um Zahlenwerte handeln - kategoriale Variablen verwenden aber oft alphanumerische Bezeichnungen für die Ausprägungen. Und selbst wenn die Ausprägungen über Zahlen codiert werden, lässt sich mit diesen Zahlen nicht sinnvoll rechnen. Wir benötigen also einen Weg, die Ausprägungen kategorialer Variablen in Rechengrößen umzuwandeln. Dies wird durch verschiedene Formen der *Codierung* geleistet. Es gibt verschiedene Formen der Codierung, die sich hinsichtlich ihrer statistischen Eigenschafen unterscheiden. Gebräuchlich, wenn auch nicht immer die beste Wahl, sind das *one-hot-encoding* und das *dummy-encoding*. Beim one-hot-encoding einer kategorialen Variablen $x_i$ führt man für jede Ausprägung $\ell$ eine neue Variable $x_i^\ell$ ein, die über die Werte 0 und 1 für jede Beobachtung codiert, ob die ursprüngliche Ausprägung $\ell$ war (1) oder nicht (0). Die neuen Variablen sind also Indikatorvariablen für die Ausprägungen. Bei $L$ verschiedenen Ausprägungen erhält man  damit beim one-hot-encoding $L$ neue Variablen, die die ursprüngliche Variable im Modell ersetzen. Allerdings ist diese Codierung redundant, denn es würden $L-1$ binäre Variablen ausreichen, um $L$ verschiedene Ausprägungen zu modellieren: Der Fall, dass alle $L-1$ Variablen den Wert 0 haben wird nämlich beim one-hot-encoding nicht genutzt, weil immer genau eine Variable den Wert 1 hat. Beim dummy-encoding hingegen wählt man eine Referenzausprägung und weist dieser implizit die Codierung durch $L-1$ 0-Werte zu. Dies hat auch den Vorteil, dass die durch one-hot-encoding eingeführte lineare Abhängigkeit zwischen den $L$ Variablen und der (impliziten) Variable für den $\beta_0$-Term (man kann sich eine Variable $x_0=1$ denken) vermieden wird. Bei der dummy-Codierung muss man entscheiden, welche Ausprägung zur Referenzausprägung wird. Im Regressionsmodell entspricht $\beta_0$ dann dem Mittelwert der Referenzausprägung. Es ist daher wichtig eine Ausprägung zur Referenzausprägung zu wählen, die im Datensatz häufig vorkommt - ansonsten ist der Mittelwert nicht valide.    
-
-```{r recipe_step_dummy_encoding, exercise = TRUE}
-housing_rec %>% step_dummy(all_nominal(), one_hot = FALSE) -> housing_rec
-```
-
-### Konstante Variablen entfernen
-
-Der nächste Schritt entfernt die Variablen, die entweder eine sehr kleine Varianz oder eine sehr stark dominierende Ausprägung haben, d.h. wir wenden die Funktion `step_nvz` sowohl auf numerische als auch auf kategoriale oder nominale Variablen an.  
-
-```{r recipe_step_low_variance, exercise = TRUE}
-housing_rec %>% 
-  step_nzv(all_predictors()) -> housing_rec
-```
-
-### Zentrieren numerischer Variablen
-
-Bei der linearen Regression ist der Erwartungswert der Zielvariable $y$ gleich dem konstanten Term $beta_0$, wenn die Prädiktoren $x_i = 0$ sind. 0 ist aber für viele Anwendungen in der Realität ein außergewöhnlicher Wert, bspw. eine Größe von 0$m$, eine Fläche von 0 $m^2$, eine Zahl von 0 Zimmern usw. Es wäre viel intuitiver, wenn $y = \beta_0$ für den Fall, dass die Prädiktoren ihren jeweiligen Durchschnittswert annehmen. Und genau das kann man erreichen, wenn man die Variablen zentriert, d.h. vom jeweiligen Wert den Durchschnitt abzieht, denn dann haben die (zentrierten) Variablen den Durchschnittswert 0.
-
-Manchmal *skaliert* man die Variablen auch noch zusätzlich zur Zentrierung: Das bedeutet, dass man die Werte auch noch durch die Standardabweichung dividiert. In der Statistik nennt man beide Schritte zusammen *z-Transformation*. Damit sind die Verteilungen der Variablenwerte vergleichbar und die Koeffizienten $\beta_i$ sind damit auch einfacher vergleichbar. Tatsächlich führt man durch den Schritt eine Einheitenumrechnung durch und alle Koeffizienten $\beta_i$ haben dadurch dieselbe Einheit.
-
-```{r recipe_scale_vars, exercise = TRUE}
-housing_rec %>% step_center(all_predictors()) %>%
-  step_scale(all_predictors()) -> housing_rec
-```
-
-
-### Bereinigung um stark korrelierte Variablen
-
-Wie oben erläutert, können stark korrelierte Variablen die Robustheit des Modells und dessen Interpretation verschlechtern. Daher entfernen wir stark korrelierte numerische Variablen:
-```{r recipe_handle_correlations, exercise = TRUE}
-housing_rec %>% step_corr(all_predictors(), threshold = 0.8) -> housing_rec
-```
-
-## Modellbildung
-
-Ähnlich wie die Vorverarbeitung, erstellt man mit dem `parsnip`-Paket (wie `recipes` gehört dieses Paket der Paketfamilie `tidymodels` an) eine Spezifikation für ein Modell, das man dann mittels einer *engine*, d.h. einer konkreten Verfahrensimplementierung, berechnet.
-
-```{r parsnip_model, exercise = TRUE}
-library(parsnip)
-
-lr_mod <- linear_reg(mode = "regression") %>% set_engine("lm")
-```
-
-### Verbinden von Daten und Modell
-
-Wir verbinden Modellspezifikation und Rezept, d.h. die Datenvorverarbeitungsspezifikation, mittels eines *workflows*:
-```{r create_workflow, exercise = TRUE}
-library(workflows)
-
-(housing_wf <- workflow() %>% add_model(lr_mod) %>% add_recipe(housing_rec))
-
-```
-
-### Modell trainieren
-```{r train_housing, exercise = TRUE}
-housing_fit <- housing_wf %>% fit(data = training_data) 
-
-summary(housing_fit$fit$fit$fit)
-
-```
-
-### Modell testen
-
-Das Testen des Modells ist die Grundlage für die Bewertung der Modellqualität. Dem trainierten Modell werden dazu die zuvor dem Modell unbekannten Testdaten übergeben und das Modell berechnet einen Schätzwert für die Zielvariable. Allerdings kann man dem Modell die Testdaten nicht einfach in der Form übergeben, in der die Daten vorlagen: Stattdessen muss man die Vorverarbeitungsschritte, die man für den Trainingsdatensatz durchgeführt hat, auch für die Testdaten anwenden. Insbesondere müssen auch im Testdatensatz die Variablen zentriert und skaliert werden, weil dies für den Trainingsdatensatz auch durchgeführt wurde: Für die Vorverarbeitung des Testdatensatzes werden also die Mittelwerte und Standardabweichungen der entsprechenden Variablen des Trainingsdatensatzes benötigt. Ohne die Verwendung der Methoden aus dem `tidymodels`-Paket, müssten wir uns diese Parameter an geeigneter Stelle merken und anwenden. Dieser Schritt wird uns von den `tidymodels`-Methoden abgenommen, so dass wir für das Testen des Modells einfach schreiben können:
-```{r predict_housing, exercise = TRUE}
-housing_pred <- predict(housing_fit, test_data)
-```
-
-Eine Vorschau auf die Vorhersagegüte liefert uns:
-```{r preview_predictions, exercise = TRUE}
-(pred_truth_tab <- housing_pred %>% bind_cols(test_data %>% dplyr::select(SalePrice)))
-```
-
-### Modell evaluieren
-
-Um genauer zu untersuchen, wie gut das Modell ist, verwenden wir verschiedene Metriken. Das Paket `yardstick`, das ebenfalls zu `tidymodels` gehört, bietet hier schon eine gute Auswahl:
-
-```{r model_metrics, exercise = TRUE}
-library(yardstick)
-
-metrics(pred_truth_tab, SalePrice, .pred)
-
-```
-
-*rsq* steht hier für das Bestimmtheitsmaß $R^2$, *rmse* für *root mean squared error*, d.h. 
-$\sqrt{\frac{1}{N}\sum_{j=1}^{N}(y^{(j)}- \hat{y}^{(j)})^2}$, und *mae* für den mittleren absoluten Fehler, d.h. $\frac{1}{N}\sum_{j=1}^{N}|y^{(j)}- \hat{y}^{(j)}|$. 
-
-Bei linearer Regression empfiehlt es sich, die Ergebnisse graphisch zu veranschaulichen.
-
-```{r viz_predictions, exercise = TRUE}
-pred_truth_tab %>% ggplot(aes(x = SalePrice, y = .pred)) + geom_point() + geom_smooth(method = "lm")
-```
-
-Die Vorhersagefehler sollten, entsprechend der Modellannahme, normalverteilt sein:
-
-```{r viz_residual_density, exercise = TRUE}
-residuals <- pred_truth_tab %>% mutate(err = SalePrice - .pred)
-residuals %>% ggplot(aes(x = err)) + geom_density()
-```
-
-Man verwendet häufig den *Q-Q-Plot*, um diese Annahme zu prüfen: Dabei werden die geordneten *standardisierten Fehler* über den erwarteten geordneten Werten der Standardnormalverteilung abgetragen. Zuerst müssen wir daher die standardisierten Fehler (s. @Sheather2009) berechnen:
-
-```{r qqplot_on_std_res, exercise = TRUE}
-std_res <- MASS::stdres(housing_fit$fit$fit$fit)
-
-qqnorm(std_res)
-abline(0, 1, col = "red")
-```
-
-Wir sehen, dass die standardisierten Residuen (Fehler) für einen Großteil des Wertebereichs schon sehr gut den Erwartungen, nämlich einer Standardnormalverteilung zu folgen, entsprechen. Aber es gibt auch Ausnahmen und wir prüfen daher die Standardresiduen abgetragen über den Indices der Beobachtungen. Zusätzlich plotten wir in rot den Verkaufspreis.
-
-```{r viz_srdres_over_index, exercise = TRUE}
-idx_stdres <- tibble::enframe(std_res, name = "Index", value = "StdRes") %>% 
-  mutate(Index = as.integer(Index)) %>% 
-  bind_cols(housing_fit$pre$mold$outcomes)
-
-
-idx_stdres %>% 
-  arrange(Index) %>% 
-  ggplot(aes(x = Index, y = StdRes)) +
-  geom_point() + 
-  geom_linerange(aes(ymax = StdRes, ymin = 0)) +
-  geom_label(aes(x = Index, y = StdRes, label = Index), size = 3, 
-            data = idx_stdres %>% filter(abs(StdRes) > 5),
-            nudge_y = 0.5) +
-  geom_line(aes(x = Index, y = SalePrice), color = "red", alpha = 0.5) +
-  scale_x_continuous(breaks = c(1, seq(200, 2200, 200)))
-```
-
-Das Modell scheint besonders bei höheren Verkaufspreisen auch größere Fehler aufzuweisen, was wir überprüfen:
-
-```{r viz_stdres_over_target, exercise = TRUE}
-idx_stdres %>% 
-  ggplot(aes(x = SalePrice, y = StdRes )) +
-  geom_point(alpha = 0.3) 
-```
-
-
-
-
-Lasso-Modell: Gleichzeitig Features auswählen und Modell fitten
-
-
-
-## Modellinterpretation
-
-
-
-
-
-## Session Info
-```{r sessioninfo}
-sessionInfo()
-```
-
-
-* [Data Doku](http://jse.amstat.org/v19n3/decock/DataDocumentation.txt)
-* [GeoLokationen im Artikel](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)
-* [Beispielanalyse](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)
-
-
 

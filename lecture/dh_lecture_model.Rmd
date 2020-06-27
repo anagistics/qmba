@@ -1,0 +1,160 @@
+---
+title: "Vorlesung Data Science Praxis"
+author: "Andreas Cardeneo"
+date: "`r Sys.Date()`"
+output: learnr::tutorial
+runtime: shiny_prerendered
+bibliography: ["citation.bib"]
+biblio-style: "apalike"
+link-citations: true
+---
+
+<style>
+div.blackbox {
+  padding: 1em;
+  background: lightblue;
+  color: black;
+  border: 2px solid blue;
+  border-radius: 10px;
+}
+
+div.center {
+  text-align: center;
+}
+</style>
+
+```{r setup, include = FALSE}
+library(learnr)
+tutorial_options(exercise.timelimit = 60)
+
+```
+
+## Modellbildung
+
+Ähnlich wie die Vorverarbeitung, erstellt man mit dem `parsnip`-Paket (wie `recipes` gehört dieses Paket der Paketfamilie `tidymodels` an) eine Spezifikation für ein Modell, das man dann mittels einer *engine*, d.h. einer konkreten Verfahrensimplementierung, berechnet.
+
+```{r parsnip_model, exercise = TRUE}
+library(parsnip)
+
+lr_mod <- linear_reg(mode = "regression") %>% set_engine("lm")
+```
+
+### Verbinden von Daten und Modell
+
+Wir verbinden Modellspezifikation und Rezept, d.h. die Datenvorverarbeitungsspezifikation, mittels eines *workflows*:
+```{r create_workflow, exercise = TRUE}
+library(workflows)
+
+(housing_wf <- workflow() %>% add_model(lr_mod) %>% add_recipe(housing_rec))
+
+```
+
+### Modell trainieren
+```{r train_housing, exercise = TRUE}
+housing_fit <- housing_wf %>% fit(data = training_data) 
+
+summary(housing_fit$fit$fit$fit)
+
+```
+
+### Modell testen
+
+Das Testen des Modells ist die Grundlage für die Bewertung der Modellqualität. Dem trainierten Modell werden dazu die zuvor dem Modell unbekannten Testdaten übergeben und das Modell berechnet einen Schätzwert für die Zielvariable. Allerdings kann man dem Modell die Testdaten nicht einfach in der Form übergeben, in der die Daten vorlagen: Stattdessen muss man die Vorverarbeitungsschritte, die man für den Trainingsdatensatz durchgeführt hat, auch für die Testdaten anwenden. Insbesondere müssen auch im Testdatensatz die Variablen zentriert und skaliert werden, weil dies für den Trainingsdatensatz auch durchgeführt wurde: Für die Vorverarbeitung des Testdatensatzes werden also die Mittelwerte und Standardabweichungen der entsprechenden Variablen des Trainingsdatensatzes benötigt. Ohne die Verwendung der Methoden aus dem `tidymodels`-Paket, müssten wir uns diese Parameter an geeigneter Stelle merken und anwenden. Dieser Schritt wird uns von den `tidymodels`-Methoden abgenommen, so dass wir für das Testen des Modells einfach schreiben können:
+```{r predict_housing, exercise = TRUE}
+housing_pred <- predict(housing_fit, test_data)
+```
+
+Eine Vorschau auf die Vorhersagegüte liefert uns:
+```{r preview_predictions, exercise = TRUE}
+(pred_truth_tab <- housing_pred %>% bind_cols(test_data %>% dplyr::select(SalePrice)))
+```
+
+### Modell evaluieren
+
+Um genauer zu untersuchen, wie gut das Modell ist, verwenden wir verschiedene Metriken. Das Paket `yardstick`, das ebenfalls zu `tidymodels` gehört, bietet hier schon eine gute Auswahl:
+
+```{r model_metrics, exercise = TRUE}
+library(yardstick)
+
+metrics(pred_truth_tab, SalePrice, .pred)
+
+```
+
+*rsq* steht hier für das Bestimmtheitsmaß $R^2$, *rmse* für *root mean squared error*, d.h. 
+$\sqrt{\frac{1}{N}\sum_{j=1}^{N}(y^{(j)}- \hat{y}^{(j)})^2}$, und *mae* für den mittleren absoluten Fehler, d.h. $\frac{1}{N}\sum_{j=1}^{N}|y^{(j)}- \hat{y}^{(j)}|$. 
+
+Bei linearer Regression empfiehlt es sich, die Ergebnisse graphisch zu veranschaulichen.
+
+```{r viz_predictions, exercise = TRUE}
+pred_truth_tab %>% ggplot(aes(x = SalePrice, y = .pred)) + geom_point() + geom_smooth(method = "lm")
+```
+
+Die Vorhersagefehler sollten, entsprechend der Modellannahme, normalverteilt sein:
+
+```{r viz_residual_density, exercise = TRUE}
+residuals <- pred_truth_tab %>% mutate(err = SalePrice - .pred)
+residuals %>% ggplot(aes(x = err)) + geom_density()
+```
+
+Man verwendet häufig den *Q-Q-Plot*, um diese Annahme zu prüfen: Dabei werden die geordneten *standardisierten Fehler* über den erwarteten geordneten Werten der Standardnormalverteilung abgetragen. Zuerst müssen wir daher die standardisierten Fehler (s. @Sheather2009) berechnen:
+
+```{r qqplot_on_std_res, exercise = TRUE}
+std_res <- MASS::stdres(housing_fit$fit$fit$fit)
+
+qqnorm(std_res)
+abline(0, 1, col = "red")
+```
+
+Wir sehen, dass die standardisierten Residuen (Fehler) für einen Großteil des Wertebereichs schon sehr gut den Erwartungen, nämlich einer Standardnormalverteilung zu folgen, entsprechen. Aber es gibt auch Ausnahmen und wir prüfen daher die Standardresiduen abgetragen über den Indices der Beobachtungen. Zusätzlich plotten wir in rot den Verkaufspreis.
+
+```{r viz_srdres_over_index, exercise = TRUE}
+idx_stdres <- tibble::enframe(std_res, name = "Index", value = "StdRes") %>% 
+  mutate(Index = as.integer(Index)) %>% 
+  bind_cols(housing_fit$pre$mold$outcomes)
+
+
+idx_stdres %>% 
+  arrange(Index) %>% 
+  ggplot(aes(x = Index, y = StdRes)) +
+  geom_point() + 
+  geom_linerange(aes(ymax = StdRes, ymin = 0)) +
+  geom_label(aes(x = Index, y = StdRes, label = Index), size = 3, 
+            data = idx_stdres %>% filter(abs(StdRes) > 5),
+            nudge_y = 0.5) +
+  geom_line(aes(x = Index, y = SalePrice), color = "red", alpha = 0.5) +
+  scale_x_continuous(breaks = c(1, seq(200, 2200, 200)))
+```
+
+Das Modell scheint besonders bei höheren Verkaufspreisen auch größere Fehler aufzuweisen, was wir überprüfen:
+
+```{r viz_stdres_over_target, exercise = TRUE}
+idx_stdres %>% 
+  ggplot(aes(x = SalePrice, y = StdRes )) +
+  geom_point(alpha = 0.3) 
+```
+
+
+
+
+Lasso-Modell: Gleichzeitig Features auswählen und Modell fitten
+
+
+
+## Modellinterpretation
+
+
+
+
+
+## Session Info
+```{r sessioninfo}
+sessionInfo()
+```
+
+
+* [Data Doku](http://jse.amstat.org/v19n3/decock/DataDocumentation.txt)
+* [GeoLokationen im Artikel](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)
+* [Beispielanalyse](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)
+
+
+

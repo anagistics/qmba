@@ -1,0 +1,136 @@
+---
+title: "Vorlesung Data Science Praxis"
+author: "Andreas Cardeneo"
+date: "`r Sys.Date()`"
+output: learnr::tutorial
+runtime: shiny_prerendered
+bibliography: ["citation.bib"]
+biblio-style: "apalike"
+link-citations: true
+---
+
+<style>
+div.blackbox {
+  padding: 1em;
+  background: lightblue;
+  color: black;
+  border: 2px solid blue;
+  border-radius: 10px;
+}
+
+div.center {
+  text-align: center;
+}
+</style>
+
+```{r setup, include = FALSE}
+library(learnr)
+tutorial_options(exercise.timelimit = 60)
+
+```
+
+## Datenvorverarbeitung
+
+Nachdem wir ein besseres Verständnis für die Daten und die Zusammenhänge zwischen den Variablen erhalten haben, können und müssen wir vor der Modellerstellung noch weitere Vorverarbeitungsschritte vornehmen. Tatsächlich kann dieser Schritt nicht ohne Verständnis für das angestrebte Modell durchgeführt werden: Einige Arten von Modellen können bspw. nicht mit fehlenden Werten oder kategorialen Variablen umgehen (beides gilt für lineare und logistische Regression - hier darf man aber nicht das Verfahren an sich mit der Implementierung des Verfahrens verwechseln. Diese kann bspw. automatisch Datensätze mit fehlenden Werten entfernen und dann wirkt das Verfahren nach außen hin so, als könnte es mit fehlenden Werten umgehen). Nachdem man zu Beginn oftmals noch nicht sicher weiß, welche Art von Modell das beste Ergebnis liefert, ist die Datenvorbereitung in der Praxis ein iterativer Prozess. 
+
+Wir werden uns, wie oben auch schon praktiziert, hier mit einem linearen Regressionsmodell beschäftigen. Unser Modell wird also die Form
+$$ \hat{y} = \beta_0 + \sum_{i=1}^n \beta_i\cdot x_i + \varepsilon$$ haben.
+Dabei ist $\hat{y}$ die Schätzung für die *Zielvariable* (hier der Verkaufspreis), die $x_i$ sind $n$ unabhängige Variablen (die Prädiktoren) und $\varepsilon$ ist ein Fehlerterm. 
+Gesucht sind die Koeffizienten $\beta_0$ (konstanter Term, *intercept*) und $\beta_i$. Ermittelt werden diese Koeffizienten anhand von $N$ *Trainingsdatensätzen* $(y^{(j)}, x_1^{(j)}, x_2^{(j)},\ldots,x_n^{(j)}), j = 1,\ldots,N$ durch Lösen des Optimierungsproblems 
+$$ \min_{\beta_0, \beta_1,\ldots,\beta_n} \sum_{j=1}^N \left(y^{(j)} - \left(\beta_0 + \sum_{i=1}^n \beta_i\cdot x_i^{(j)}\right)\right)^2. $$
+Für dieses Optimierungsproblem kann man geschlossene Ausdrücke für die optimalen Koeffizienten $\beta_0^*, \beta_1^*,\ldots, \beta_n^*$ angeben und die Lösung somit effizient berechnen (s. @Sheather2009).
+
+Für die Datenvorbereitung des Modells werden wir das `recipes`-Paket verwenden. Dieses Paket bietet schon eine Vielzahl typischer Vorbereitungsschritte, die sich einfach zu einer *Pipeline* zusammensetzen lassen. Diese Pipeline kann dann auch einfach wieder auf andere Daten angewandt werden, was die Reproduzierbarkeit und Wiederverwendung erleichtert.
+
+Wir beginnen das *Rezept* mit der Aufteilung des Datensatzes in einen Trainings- und einen Testdatensatz. Auf Basis des Trainingsdatensatzes wird das Modell *gelernt* und die Güte des gelernten Modells wird dann anhand des Testdatensatzes gemessen. Damit ist sichergestellt, dass wir messen, wie gut das Modell die wesentlichen Eigenschaften der Daten abbildet und generalisieren kann: Schließlich sind wir daran interessiert, eine Verkaufspreisvorhersage für zuvor ungesehene Daten zu erhalten.
+
+Damit wir aber sicher sind, dass wir auch auf den richtigen Daten arbeiten, wiederholen wir an dieser Stelle ein paar der Erstellungsschritte von oben:
+
+### Grundlage (wieder)herstellen
+
+```{r recreate_housing_data, exercise = TRUE}
+housing_data <- ames_raw
+names(housing_data) <- make.names(names(housing_data))
+
+type_data <- housing_variable_types()
+categorials <- housing_categorials(type_data)
+
+housing_data <- housing_data %>% mutate_at(vars(all_of(categorials)), as.factor) %>% 
+  dplyr::select(-Order, -PID)
+
+```
+
+### Rezept anlegen
+```{r create_data_split, exercise = TRUE}
+library(rsample)
+
+set.seed(123456)
+
+data_split <- initial_split(housing_data)
+
+training_data <- training(data_split)
+test_data <- testing(data_split)
+```
+
+Das Rezept wird angelegt, indem wir die Zielvariable angeben und pauschal alle anderen Variablen als potentielle Prädiktoren vorsehen. Im weiteren Verlauf werden wir das Rezept durch die Verkettung mit `step_*`-Funktionen weiter spezifizieren. Viele der `step_*`-Funktionen aus dem `recipes`-Paket bieten noch Parameter, um das Verhalten weiter zu beeinflussen. Die Dokumentation zum `recipes`-Paket listet unter https://recipes.tidymodels.org/articles/Ordering.html auch eine empfohlene Reihenfolge der Schritte auf.
+
+```{r create_recipe, exercise = TRUE}
+library(recipes)
+
+housing_rec <- recipe(SalePrice ~ ., data = training_data)
+```
+
+### Imputation fehlender Werte
+Zunächst werden wir fehlende Werte mit einer komplexeren Imputationsstrategie, nämlich *kNN-Imputation* (s. u.a. @Beretta2016), durch plausible Werte ersetzen:
+```{r recipe_step_imputation, exercise = TRUE}
+housing_rec %>% 
+  step_knnimpute(all_predictors(), neighbors = 3) -> housing_rec
+```
+
+Um noch etwas deutlicher den *Fluss* der Transformationen darzustellen, haben wir hier den Zuweisungsoperator in der Form `->` verwendet.
+
+
+### Seltene Kategorien zusammenfassen
+
+Wir haben oben gesehen, dass es einige kategoriale Variablen gibt, die sehr seltene Ausprägungen aufweisen. Diese fassen wir zu Gruppen zusammen:
+```{r recipe_step_rare_levels, exercise = TRUE}
+housing_rec %>% 
+  step_other(all_nominal(), threshold = 0.05) -> housing_rec
+```
+
+### Codierung kategorialer Variablen
+
+Bei der linearen Regression werden die Variablenausprägungen $x_i$ mit den Koeffizienten $\beta_i$ multiplziert und addiert. Es muss sich daher bei den Ausprägungen um Zahlenwerte handeln - kategoriale Variablen verwenden aber oft alphanumerische Bezeichnungen für die Ausprägungen. Und selbst wenn die Ausprägungen über Zahlen codiert werden, lässt sich mit diesen Zahlen nicht sinnvoll rechnen. Wir benötigen also einen Weg, die Ausprägungen kategorialer Variablen in Rechengrößen umzuwandeln. Dies wird durch verschiedene Formen der *Codierung* geleistet. Es gibt verschiedene Formen der Codierung, die sich hinsichtlich ihrer statistischen Eigenschafen unterscheiden. Gebräuchlich, wenn auch nicht immer die beste Wahl, sind das *one-hot-encoding* und das *dummy-encoding*. Beim one-hot-encoding einer kategorialen Variablen $x_i$ führt man für jede Ausprägung $\ell$ eine neue Variable $x_i^\ell$ ein, die über die Werte 0 und 1 für jede Beobachtung codiert, ob die ursprüngliche Ausprägung $\ell$ war (1) oder nicht (0). Die neuen Variablen sind also Indikatorvariablen für die Ausprägungen. Bei $L$ verschiedenen Ausprägungen erhält man  damit beim one-hot-encoding $L$ neue Variablen, die die ursprüngliche Variable im Modell ersetzen. Allerdings ist diese Codierung redundant, denn es würden $L-1$ binäre Variablen ausreichen, um $L$ verschiedene Ausprägungen zu modellieren: Der Fall, dass alle $L-1$ Variablen den Wert 0 haben wird nämlich beim one-hot-encoding nicht genutzt, weil immer genau eine Variable den Wert 1 hat. Beim dummy-encoding hingegen wählt man eine Referenzausprägung und weist dieser implizit die Codierung durch $L-1$ 0-Werte zu. Dies hat auch den Vorteil, dass die durch one-hot-encoding eingeführte lineare Abhängigkeit zwischen den $L$ Variablen und der (impliziten) Variable für den $\beta_0$-Term (man kann sich eine Variable $x_0=1$ denken) vermieden wird. Bei der dummy-Codierung muss man entscheiden, welche Ausprägung zur Referenzausprägung wird. Im Regressionsmodell entspricht $\beta_0$ dann dem Mittelwert der Referenzausprägung. Es ist daher wichtig eine Ausprägung zur Referenzausprägung zu wählen, die im Datensatz häufig vorkommt - ansonsten ist der Mittelwert nicht valide.    
+
+```{r recipe_step_dummy_encoding, exercise = TRUE}
+housing_rec %>% step_dummy(all_nominal(), one_hot = FALSE) -> housing_rec
+```
+
+### Konstante Variablen entfernen
+
+Der nächste Schritt entfernt die Variablen, die entweder eine sehr kleine Varianz oder eine sehr stark dominierende Ausprägung haben, d.h. wir wenden die Funktion `step_nvz` sowohl auf numerische als auch auf kategoriale oder nominale Variablen an.  
+
+```{r recipe_step_low_variance, exercise = TRUE}
+housing_rec %>% 
+  step_nzv(all_predictors()) -> housing_rec
+```
+
+### Zentrieren numerischer Variablen
+
+Bei der linearen Regression ist der Erwartungswert der Zielvariable $y$ gleich dem konstanten Term $beta_0$, wenn die Prädiktoren $x_i = 0$ sind. 0 ist aber für viele Anwendungen in der Realität ein außergewöhnlicher Wert, bspw. eine Größe von 0$m$, eine Fläche von 0 $m^2$, eine Zahl von 0 Zimmern usw. Es wäre viel intuitiver, wenn $y = \beta_0$ für den Fall, dass die Prädiktoren ihren jeweiligen Durchschnittswert annehmen. Und genau das kann man erreichen, wenn man die Variablen zentriert, d.h. vom jeweiligen Wert den Durchschnitt abzieht, denn dann haben die (zentrierten) Variablen den Durchschnittswert 0.
+
+Manchmal *skaliert* man die Variablen auch noch zusätzlich zur Zentrierung: Das bedeutet, dass man die Werte auch noch durch die Standardabweichung dividiert. In der Statistik nennt man beide Schritte zusammen *z-Transformation*. Damit sind die Verteilungen der Variablenwerte vergleichbar und die Koeffizienten $\beta_i$ sind damit auch einfacher vergleichbar. Tatsächlich führt man durch den Schritt eine Einheitenumrechnung durch und alle Koeffizienten $\beta_i$ haben dadurch dieselbe Einheit.
+
+```{r recipe_scale_vars, exercise = TRUE}
+housing_rec %>% step_center(all_predictors()) %>%
+  step_scale(all_predictors()) -> housing_rec
+```
+
+
+### Bereinigung um stark korrelierte Variablen
+
+Wie oben erläutert, können stark korrelierte Variablen die Robustheit des Modells und dessen Interpretation verschlechtern. Daher entfernen wir stark korrelierte numerische Variablen:
+```{r recipe_handle_correlations, exercise = TRUE}
+housing_rec %>% step_corr(all_predictors(), threshold = 0.8) -> housing_rec
+```
+
