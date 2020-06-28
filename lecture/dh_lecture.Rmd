@@ -23,6 +23,13 @@ div.center {
 }
 </style>
 
+```{r setup, include = FALSE}
+library(learnr)
+tutorial_options(exercise.timelimit = 60)
+
+```
+
+
 ## Einführung
 
 In dieser Vorlesung geht es um eine Einführung in die praktische Arbeit mit Data Science Methoden. Wir befassen uns anhand eines Szenarios zunächst mit explorativer Datenanalyse, entwickeln dann systematisch ein Modell des maschinellen Lernens und analysieren danach die erhaltenen Ergebnisse. 
@@ -48,7 +55,7 @@ Ihre Aufgabe besteht darin, ein **Prognosemodell für Immobilienpreise** und ein
 </div>
 
 
-Weil Ihre hauseigene IT auf absehbare Zeit noch damit beschäftigt ist, die bislang getrennt in jeder Filiale in Excel-Dateien festgehaltenen Immobiliengeschäfte in eine zentrale Datenbank zu überführen, haben Sie sich aus dem Internet eine frei verfügbare Datensammluung von Immobilienpreisen besorgt. Mit Hilfe dieser Daten können Sie schon einmal den ganzen Prozess der Modellentwicklung durchlaufen und einen Prototypen erstellen, damit Ihr Management auch nachvollziegen kann, wie die fertige Lösung aussehen wird.
+Weil Ihre hauseigene IT auf absehbare Zeit noch damit beschäftigt ist, die bislang getrennt in jeder Filiale in Excel-Dateien festgehaltenen Immobiliengeschäfte in eine zentrale Datenbank zu überführen, haben Sie sich aus dem Internet eine frei verfügbare Datensammluung von Immobilienpreisen besorgt. Mit Hilfe dieser Daten können Sie schon einmal den ganzen Prozess der Modellentwicklung durchlaufen und einen Prototypen erstellen, damit Ihr Management auch nachvollziehen kann, wie die fertige Lösung aussehen wird.
 
 Als technische Plattform stehen Ihnen 
 
@@ -62,22 +69,26 @@ für die Entwicklung von Modell und Anwendung zur Verfügung.
 
 Neben Python ist *R* eine der derzeit populärsten Sprachen für Datenanalye, Statistik und maschinellem Lernen. Während Python als vielseitige Programmiersprache gerne von einer Community eingesetzt wird, die aus der Softwareentwicklung kommt, hat *R* seinen Ursprung in der statistischen und wissenschaftlichen Community und bietet sehr vielfältige Möglichkeiten für (explorative) Datenanalyse und statistische Methoden. Zu den letzteren kann man im weiteren Sinne auch Methoden des maschinellen Lernens zählen.
 
+### Einstieg in R
+
+Es gibt zahlreiche Bücher, webbasierte Tutorials und Videos für den Einstieg in R. Dieses Tutorial solld as nicht leisten. Stattdessen verweise ich hier auf eine Reihe von Videos von *Data Science Dojo*, die man hier finden kann: 
+
+![](https://www.youtube.com/playlist?list=PL8eNk_zTBST8j2BU5HYFQogdCjtrHyQAx)
+
+Die ersten 11 Videos liefern in ca. 45 Minuten einen einfachen Einstieg in die R Syntax, Datentypen und wichtige Sprachkonstrukte.
+
 ## Explorative Datenanalyse
 
 Wenn man eine neue Datenquelle erschließen möchte, bestehen die ersten Schritte aus der *explorativen Datenanalye*. Hierbei geht es darum, ein Verständnis für die Daten zu bekommen und insbesondere Fehler und Auffälligkeiten zu entdecken.
+Wir laden zunächst die Immobiliendaten über das R-Paket `AmesHousing`, weisen den Daten den Namen `raw` zu und korrigieren die Bezeichnungen der Spalten des Datensatzes, so dass diese im weiteren Verlauf gültige R-Bezeichner ergeben:
 
-Wir laden zunächst die Immobiliendaten über ein *R*-Paket:
-```{r load_data, exercise = TRUE}
+```{r prep_raw, exercise = FALSE}
 library(AmesHousing)
-```
-
-Die Daten werden wir unter der Bezeichnung `raw` weiter untersuchen:
-```{r assign_data, exercise = TRUE}
 raw <- ames_raw
 names(raw) <- make.names(names(raw))
 ```
 
-Die zweite Zeile im obigen Codeblock dient dazu, die Bezeichner der Variablen (Spalten des Datensatzes) so umzuwandeln, dass keine Leerzeichen mehr enthalten sind, die uns sonst an späterer Stelle stören würden.
+Die letzte Zeile im obigen Codeblock dient dazu, die Bezeichner der Variablen (Spalten des Datensatzes) so umzuwandeln, dass diese bspw. keine Leerzeichen mehr enthalten, die uns sonst an späterer Stelle stören würden.
 
 Um uns einen ersten Eindruck von den Daten zu verschaffen, benutzen wir die Funktion `glimpse` aus dem `dplyr`-Paket. Dieses Paket ist grundsätzlich eine gute Wahl für die Datenanalyse, weil es zahlreiche recht intuitiv anwendbare Funktionen für Datentransformationen, Datenfilterung und -aggregation bietet.
 
@@ -416,6 +427,10 @@ wrap_plots(var_cl_plots, ncol = 2)
 Zwar sind nicht alle Plots gut lesbar, aber wir sehen, was wir wissen wollten: Es gibt für viele kategoriale Variablen Gruppen von Ausprägungen, die sehr selten vorkommen.
 Weiter unten bei der Datenvorverarbeitung für die Modellierung, werden wir daher solche kategorialen Variablen entsprechend bearbeiten und seltene Ausprägungen zusammenfassen.
 
+### Fachliche Transformationen
+
+Manchmal ist es sinnvoll, Variablen aus fachlichen Gründen zu transformieren. Hier am Beispiel von Immobilien können wir uns vorstellen, dass der Preis der Immobilie von deren Alter abhängt. Die Variable *Year.Built* erfasst das Baujahr und *Year.Remod.Add* erfasst das Jahr des letzten Umgestaltung. Wir könnten hier zwei neue Variablen einführen, die stattdessen das *Alter* der Immobilie bzw. die Jahre seit der letzten Umgestaltung abbilden. 
+
 ## Informationsbeiträge von Variablen
 
 Nachdem wir uns im vorherigen Abschnitt mit kategorialen Variablen befasst haben, kehren wir hier wieder zurück zu den numerischen Variablen. Wir sollten uns in Erinnerung rufen, das wir letztlich ein Modell für den Verkaufspreis von Immobilien entwickeln wollen. Dahinter steckt die Annahme, dass verschiedene Eigenschaften bzw. Eigenschaftskombinationen von Immobilien Einfluss auf den Preis haben. 
@@ -606,6 +621,17 @@ housing_data <- housing_data %>% mutate_at(vars(all_of(categorials)), as.factor)
 
 ```
 
+### Transformationen
+In diesem Abschnitt führen wir die zuvor genannten fachlichen Transformationen durch:
+```{r domain_specific_transformations, exercise = FALSE}
+housing_data <- housing_data %>% 
+  mutate(Age = max(Year.Built) - Year.Built, 
+         Years_since_remod = max(Year.Remod.Add) - Year.Remod.Add) %>% 
+  dplyr::select(-Year.Built, -Year.Remod.Add)
+
+```
+
+
 ### Rezept anlegen
 ```{r create_data_split, exercise = TRUE}
 library(rsample)
@@ -682,6 +708,23 @@ housing_rec %>% step_corr(all_predictors(), threshold = 0.8) -> housing_rec
 
 ## Modellbildung
 
+### Trainingsdaten vorverarbeiten
+
+Zuerst müssen wir die Trainingsdaten anhand des oben entwickelten *Rezepts* vorverarbeiten.
+```{r prep_training, exercise = FALSE}
+prepared_recipe <- housing_rec %>% prep(retain = TRUE)
+
+train_prepped <- prepared_recipe %>% juice()
+```
+
+### Testdaten vorverarbeiten
+Analog verfahren wir mit den Testdaten. Hier müssen aber die im `prep`-Schritt ermittelten Parameter (bspw. den Mittelwert bei der Zentrierung oder die Standardabweichung bei der Skalierung) auf die Testdaten anwenden und nicht neu bestimmen:
+
+```{r prep_testing, exercise = FALSE}
+test_prepped <- prepared_recipe %>% bake(new_data = test_data)
+```
+
+### Modell erstellen
 Ähnlich wie die Vorverarbeitung, erstellt man mit dem `parsnip`-Paket (wie `recipes` gehört dieses Paket der Paketfamilie `tidymodels` an) eine Spezifikation für ein Modell, das man dann mittels einer *engine*, d.h. einer konkreten Verfahrensimplementierung, berechnet.
 
 ```{r parsnip_model, exercise = TRUE}
@@ -690,21 +733,12 @@ library(parsnip)
 lr_mod <- linear_reg(mode = "regression") %>% set_engine("lm")
 ```
 
-### Verbinden von Daten und Modell
+Das *Lernen* des Modells erfolgt dann über die `fit`-Funktion:
+```{r}
+housing_fit <- fit(object = lr_mod, formula = formula(prepared_recipe), data = train_prepped)
 
-Wir verbinden Modellspezifikation und Rezept, d.h. die Datenvorverarbeitungsspezifikation, mittels eines *workflows*:
-```{r create_workflow, exercise = TRUE}
-library(workflows)
-
-(housing_wf <- workflow() %>% add_model(lr_mod) %>% add_recipe(housing_rec))
-
-```
-
-### Modell trainieren
-```{r train_housing, exercise = TRUE}
-housing_fit <- housing_wf %>% fit(data = training_data) 
-
-summary(housing_fit$fit$fit$fit)
+the_model <- housing_fit$fit
+summary(the_model)
 
 ```
 
@@ -712,7 +746,7 @@ summary(housing_fit$fit$fit$fit)
 
 Das Testen des Modells ist die Grundlage für die Bewertung der Modellqualität. Dem trainierten Modell werden dazu die zuvor dem Modell unbekannten Testdaten übergeben und das Modell berechnet einen Schätzwert für die Zielvariable. Allerdings kann man dem Modell die Testdaten nicht einfach in der Form übergeben, in der die Daten vorlagen: Stattdessen muss man die Vorverarbeitungsschritte, die man für den Trainingsdatensatz durchgeführt hat, auch für die Testdaten anwenden. Insbesondere müssen auch im Testdatensatz die Variablen zentriert und skaliert werden, weil dies für den Trainingsdatensatz auch durchgeführt wurde: Für die Vorverarbeitung des Testdatensatzes werden also die Mittelwerte und Standardabweichungen der entsprechenden Variablen des Trainingsdatensatzes benötigt. Ohne die Verwendung der Methoden aus dem `tidymodels`-Paket, müssten wir uns diese Parameter an geeigneter Stelle merken und anwenden. Dieser Schritt wird uns von den `tidymodels`-Methoden abgenommen, so dass wir für das Testen des Modells einfach schreiben können:
 ```{r predict_housing, exercise = TRUE}
-housing_pred <- predict(housing_fit, test_data)
+housing_pred <- predict(housing_fit, test_prepped)
 ```
 
 Eine Vorschau auf die Vorhersagegüte liefert uns:
@@ -750,7 +784,7 @@ residuals %>% ggplot(aes(x = err)) + geom_density()
 Man verwendet häufig den *Q-Q-Plot*, um diese Annahme zu prüfen: Dabei werden die geordneten *standardisierten Fehler* über den erwarteten geordneten Werten der Standardnormalverteilung abgetragen. Zuerst müssen wir daher die standardisierten Fehler (s. @Sheather2009) berechnen:
 
 ```{r qqplot_on_std_res, exercise = TRUE}
-std_res <- MASS::stdres(housing_fit$fit$fit$fit)
+std_res <- MASS::stdres(the_model)
 
 qqnorm(std_res)
 abline(0, 1, col = "red")
@@ -784,16 +818,51 @@ idx_stdres %>%
   geom_point(alpha = 0.3) 
 ```
 
+An dieser Stelle kann man den Prozess der Modellbildung noch fortsetzen: 
+* Weisen die hochpreisigen Immobilien noch Besonderheiten auf?
+* Wie verhält es sich mit den Ausreissern im niedrigeren Preisbereich: Was zeichnet diese aus?
+* Könnten wir noch weitere Merkmale erzeugen, bspw. indem wir die Grundfläche der Immobilie als zusätzliche Variable quadratisch eingehen lassen? 
 
-
-
-Lasso-Modell: Gleichzeitig Features auswählen und Modell fitten
-
-
+Für den Moment belassen wir es aber dabei. Zukünftige Versionen dieses Tutorials werden diese Fragen angehen.
 
 ## Modellinterpretation
 
+Wenn wir dem Management die Aussage präsentieren, dass unser Modell einen $R^2$-Wert von 0.85 erreicht, werden wir mit hoher Sicherheit nur fragende Blicke ernten: Stattdessen wird man wissen wollen, was denn nun den Preis einer Immobilie bestimmt. Und genau diese Frage nach der Erklärbarkeit des Modells wird uns als Data Scientists immer wieder begegnen.
 
+Eine Möglichkeit, diese Frage zu beantworten, besteht darin, die Wichtigkeit von Variablen zu messen.
+Für valide lineare Modelle gibt der Betrag des $t$-Werts, d.h. der Wert des geschätzten Koeffizienten $\hat{\beta}_i$ geteilt durch den zugehörigen Standardfehler, ein Maß für die Wichtigkeit der entsprechenden Variablen an. Der Wert (allerdings mit Vorzeichen) wird im `summary` des linearen Modells angegeben und wir können mit ein paar einfachen Befehlen eine Liste der wichtigsten Variablen erhalten: 
+
+```{r table_var_imp, exercise = FALSE}
+summary(the_model) %>% tidy() %>% mutate(varImp = abs(statistic)) %>% arrange(desc(varImp))
+
+```
+
+Die Wichtigkeit der Variablen wird über den Betrag der $t$-Statistik gemessen. Weiterhin interessant ist aber auch die Richtung, in die eine Variable wirkt: Diese wird über das Vorzeichen des Koeffizienten (und damit auch der $t$-Statistik) bestimmt. Graphisch können wir uns die Wichtigkeit und Richtung der Variablen über ein paar Zeilen `dplyr` und `ggplot2`-Code erzeugen:
+
+```{r var_imp_plot, exercise = FALSE}
+the_model %>% tidy() %>% filter(term != "(Intercept)") %>% mutate(sign = as.factor(sign(statistic)), imp = abs(statistic)) %>% 
+  top_n(n = 15, wt = imp) %>% 
+  ggplot(aes(x = reorder(term, imp), y = statistic, fill = sign)) + geom_col() + coord_flip() +
+  scale_fill_discrete() + guides(fill = FALSE) +
+  labs(x = "Variable", y = "t-Statistik")
+```
+
+
+
+
+
+```{r partial_dependence_plot, exercise = FALSE}
+library(pdp)
+
+partial(the_model, train = train_prepped, pred.var = "Garage.Area", ice = TRUE) %>% plotPartial(center = TRUE)
+
+
+```
+
+
+
+### Erklärbarkeit für andere Modelltypen
+@Greenwell2018
 
 
 
