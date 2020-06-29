@@ -687,7 +687,7 @@ housing_rec %>%
   step_nzv(all_predictors()) -> housing_rec
 ```
 
-### Zentrieren numerischer Variablen
+### Zentrieren und Skalieren numerischer Variablen
 
 Bei der linearen Regression ist der Erwartungswert der Zielvariable $y$ gleich dem konstanten Term $beta_0$, wenn die Prädiktoren $x_i = 0$ sind. 0 ist aber für viele Anwendungen in der Realität ein außergewöhnlicher Wert, bspw. eine Größe von 0$m$, eine Fläche von 0 $m^2$, eine Zahl von 0 Zimmern usw. Es wäre viel intuitiver, wenn $y = \beta_0$ für den Fall, dass die Prädiktoren ihren jeweiligen Durchschnittswert annehmen. Und genau das kann man erreichen, wenn man die Variablen zentriert, d.h. vom jeweiligen Wert den Durchschnitt abzieht, denn dann haben die (zentrierten) Variablen den Durchschnittswert 0.
 
@@ -717,13 +717,6 @@ prepared_recipe <- housing_rec %>% prep(retain = TRUE)
 train_prepped <- prepared_recipe %>% juice()
 ```
 
-### Testdaten vorverarbeiten
-Analog verfahren wir mit den Testdaten. Hier müssen aber die im `prep`-Schritt ermittelten Parameter (bspw. den Mittelwert bei der Zentrierung oder die Standardabweichung bei der Skalierung) auf die Testdaten anwenden und nicht neu bestimmen:
-
-```{r prep_testing, exercise = FALSE}
-test_prepped <- prepared_recipe %>% bake(new_data = test_data)
-```
-
 ### Modell erstellen
 Ähnlich wie die Vorverarbeitung, erstellt man mit dem `parsnip`-Paket (wie `recipes` gehört dieses Paket der Paketfamilie `tidymodels` an) eine Spezifikation für ein Modell, das man dann mittels einer *engine*, d.h. einer konkreten Verfahrensimplementierung, berechnet.
 
@@ -742,26 +735,16 @@ summary(the_model)
 
 ```
 
-### Modell testen
-
-Das Testen des Modells ist die Grundlage für die Bewertung der Modellqualität. Dem trainierten Modell werden dazu die zuvor dem Modell unbekannten Testdaten übergeben und das Modell berechnet einen Schätzwert für die Zielvariable. Allerdings kann man dem Modell die Testdaten nicht einfach in der Form übergeben, in der die Daten vorlagen: Stattdessen muss man die Vorverarbeitungsschritte, die man für den Trainingsdatensatz durchgeführt hat, auch für die Testdaten anwenden. Insbesondere müssen auch im Testdatensatz die Variablen zentriert und skaliert werden, weil dies für den Trainingsdatensatz auch durchgeführt wurde: Für die Vorverarbeitung des Testdatensatzes werden also die Mittelwerte und Standardabweichungen der entsprechenden Variablen des Trainingsdatensatzes benötigt. Ohne die Verwendung der Methoden aus dem `tidymodels`-Paket, müssten wir uns diese Parameter an geeigneter Stelle merken und anwenden. Dieser Schritt wird uns von den `tidymodels`-Methoden abgenommen, so dass wir für das Testen des Modells einfach schreiben können:
-```{r predict_housing, exercise = TRUE}
-housing_pred <- predict(housing_fit, test_prepped)
-```
-
-Eine Vorschau auf die Vorhersagegüte liefert uns:
-```{r preview_predictions, exercise = TRUE}
-(pred_truth_tab <- housing_pred %>% bind_cols(test_data %>% dplyr::select(SalePrice)))
-```
-
 ### Modell evaluieren
 
-Um genauer zu untersuchen, wie gut das Modell ist, verwenden wir verschiedene Metriken. Das Paket `yardstick`, das ebenfalls zu `tidymodels` gehört, bietet hier schon eine gute Auswahl:
+Wir können verschiedene Metriken verwenden, um besser die Qualität des Modells (zunächst auf Basis der Trainingsdaten) zu untersuchen. Das Paket `yardstick`, das ebenfalls zu `tidymodels` gehört, bietet hier schon eine gute Auswahl:
 
 ```{r model_metrics, exercise = TRUE}
 library(yardstick)
 
-metrics(pred_truth_tab, SalePrice, .pred)
+pred_truth_train <- tibble(SalePrice = train_prepped$SalePrice, predicted = the_model$fitted.values)
+
+metrics(pred_truth_train, SalePrice, predicted)
 
 ```
 
@@ -771,13 +754,13 @@ $\sqrt{\frac{1}{N}\sum_{j=1}^{N}(y^{(j)}- \hat{y}^{(j)})^2}$, und *mae* für den
 Bei linearer Regression empfiehlt es sich, die Ergebnisse graphisch zu veranschaulichen.
 
 ```{r viz_predictions, exercise = TRUE}
-pred_truth_tab %>% ggplot(aes(x = SalePrice, y = .pred)) + geom_point() + geom_smooth(method = "lm")
+pred_truth_train %>% ggplot(aes(x = SalePrice, y = predicted)) + geom_point() + geom_smooth(method = "lm")
 ```
 
 Die Vorhersagefehler sollten, entsprechend der Modellannahme, normalverteilt sein:
 
 ```{r viz_residual_density, exercise = TRUE}
-residuals <- pred_truth_tab %>% mutate(err = SalePrice - .pred)
+residuals <- pred_truth_train %>% mutate(err = SalePrice - predicted)
 residuals %>% ggplot(aes(x = err)) + geom_density()
 ```
 
@@ -790,12 +773,12 @@ qqnorm(std_res)
 abline(0, 1, col = "red")
 ```
 
-Wir sehen, dass die standardisierten Residuen (Fehler) für einen Großteil des Wertebereichs schon sehr gut den Erwartungen, nämlich einer Standardnormalverteilung zu folgen, entsprechen. Aber es gibt auch Ausnahmen und wir prüfen daher die Standardresiduen abgetragen über den Indices der Beobachtungen. Zusätzlich plotten wir in rot den Verkaufspreis.
+Wir sehen, dass die standardisierten Residuen (Fehler) für einen Großteil des Wertebereichs schon sehr gut den Erwartungen, nämlich einer Standardnormalverteilung zu folgen, entsprechen. Aber es gibt auch Ausnahmen und wir prüfen daher die Standardresiduen abgetragen über den Indices der Beobachtungen. Zusätzlich plotten wir in rot den (skalierten) Verkaufspreis.
 
 ```{r viz_srdres_over_index, exercise = TRUE}
 idx_stdres <- tibble::enframe(std_res, name = "Index", value = "StdRes") %>% 
   mutate(Index = as.integer(Index)) %>% 
-  bind_cols(housing_fit$pre$mold$outcomes)
+  bind_cols(train_prepped %>% dplyr::select(SalePrice))
 
 
 idx_stdres %>% 
@@ -806,7 +789,7 @@ idx_stdres %>%
   geom_label(aes(x = Index, y = StdRes, label = Index), size = 3, 
             data = idx_stdres %>% filter(abs(StdRes) > 5),
             nudge_y = 0.5) +
-  geom_line(aes(x = Index, y = SalePrice), color = "red", alpha = 0.5) +
+  geom_line(aes(x = Index, y = scale(SalePrice)), color = "red", alpha = 0.5) +
   scale_x_continuous(breaks = c(1, seq(200, 2200, 200)))
 ```
 
@@ -825,9 +808,40 @@ An dieser Stelle kann man den Prozess der Modellbildung noch fortsetzen:
 
 Für den Moment belassen wir es aber dabei. Zukünftige Versionen dieses Tutorials werden diese Fragen angehen.
 
+
+### Modell auf Testdaten anwenden
+
+Der wichtigste Test für das Modell ist aber, ob es Verallgemeinern kann, d.h. ob es auf zuvor nicht gesehenen Daten gute Vorhersagen liefert. Dem trainierten Modell werden dazu die zuvor dem Modell unbekannten Testdaten übergeben und das Modell berechnet einen Schätzwert für die Zielvariable. Allerdings kann man dem Modell die Testdaten nicht einfach in der Form übergeben, in der die Daten vorlagen: Stattdessen muss man die Vorverarbeitungsschritte, die man für den Trainingsdatensatz durchgeführt hat, auch für die Testdaten anwenden. Insbesondere müssen auch im Testdatensatz die Variablen zentriert und skaliert werden, weil dies für den Trainingsdatensatz auch durchgeführt wurde: Für die Vorverarbeitung des Testdatensatzes werden also die Mittelwerte und Standardabweichungen der entsprechenden Variablen des Trainingsdatensatzes benötigt. Ohne die Verwendung der Methoden aus dem `tidymodels`-Paket, müssten wir uns diese Parameter an geeigneter Stelle merken und anwenden. Dieser Schritt wird uns von den `tidymodels`-Methoden abgenommen, so dass wir für das Testen des Modells einfach schreiben können:
+```{r predict_housing, exercise = TRUE}
+test_prepped <- prepared_recipe %>% bake(new_data = test_data)
+
+housing_pred <- predict(the_model, test_prepped)
+```
+
+Die Vorhersagegüte auf Testdaten bestimmen wir einmal anhand von Metriken und auch graphisch:
+```{r preview_predictions, exercise = TRUE}
+
+pred_truth_test <- tibble::enframe(housing_pred, name = NULL, value = "predicted") %>% 
+  bind_cols(test_data %>% dplyr::select(SalePrice)) %>% 
+  mutate(err = SalePrice - predicted)
+
+metrics(pred_truth_test, truth = SalePrice, estimate = predicted)
+
+pred_truth_test %>% ggplot(aes(x = SalePrice, y = predicted)) + geom_point() + geom_smooth(method = "lm")
+```
+
+Die Verteilung der Fehler der Testdaten können wir uns im Vergleich zu den Trainingsdaten ansehen:
+```{r density_test_errors_vs_training, exercise = TRUE}
+
+ggplot(mapping = aes(x = err)) + geom_density(data = residuals, color = "green") + geom_density(data = pred_truth_test, color = "red") 
+
+```
+
+Aufgrund der Metriken und Graphiken kommen wir zu dem Schluss, dass das Modell gut generalisiert -- die oben genannten Verbesserungsmöglichkeiten bestehen natürlich nach wie vor.
+
 ## Modellinterpretation
 
-Wenn wir dem Management die Aussage präsentieren, dass unser Modell einen $R^2$-Wert von 0.85 erreicht, werden wir mit hoher Sicherheit nur fragende Blicke ernten: Stattdessen wird man wissen wollen, was denn nun den Preis einer Immobilie bestimmt. Und genau diese Frage nach der Erklärbarkeit des Modells wird uns als Data Scientists immer wieder begegnen.
+Wenn wir dem Management die Aussage präsentieren, dass unser Modell einen $R^2$-Wert von 0.86 erreicht, werden wir mit hoher Sicherheit nur fragende Blicke ernten: Stattdessen wird man wissen wollen, was denn nun den Preis einer Immobilie bestimmt. Und genau diese Frage nach der Erklärbarkeit des Modells wird uns als Data Scientists immer wieder begegnen.
 
 Eine Möglichkeit, diese Frage zu beantworten, besteht darin, die Wichtigkeit von Variablen zu messen.
 Für valide lineare Modelle gibt der Betrag des $t$-Werts, d.h. der Wert des geschätzten Koeffizienten $\hat{\beta}_i$ geteilt durch den zugehörigen Standardfehler, ein Maß für die Wichtigkeit der entsprechenden Variablen an. Der Wert (allerdings mit Vorzeichen) wird im `summary` des linearen Modells angegeben und wir können mit ein paar einfachen Befehlen eine Liste der wichtigsten Variablen erhalten: 
