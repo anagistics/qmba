@@ -90,11 +90,14 @@ names(raw) <- make.names(names(raw))
 
 Die letzte Zeile im obigen Codeblock dient dazu, die Bezeichner der Variablen (Spalten des Datensatzes) so umzuwandeln, dass diese bspw. keine Leerzeichen mehr enthalten, die uns sonst an späterer Stelle stören würden.
 
-Um uns einen ersten Eindruck von den Daten zu verschaffen, benutzen wir die Funktion `glimpse` aus dem `dplyr`-Paket. Dieses Paket ist grundsätzlich eine gute Wahl für die Datenanalyse, weil es zahlreiche recht intuitiv anwendbare Funktionen für Datentransformationen, Datenfilterung und -aggregation bietet.
+Um uns einen ersten Eindruck von den Daten zu verschaffen, benutzen wir die Funktion `glimpse` aus dem `dplyr`-Paket. Dieses Paket ist grundsätzlich eine gute Wahl für die Datenanalyse, weil es zahlreiche recht intuitiv anwendbare Funktionen für Datentransformationen, Datenfilterung und -aggregation bietet. Das Paket `dplyr` gehört zum sog. *tidyverse*, einer Sammlung von Paketen, die ein gemeinsames Konzept hinsichtlich ihrer Syntax und Semantik teilen und in den letzten Jahren die Entwicklung des R-Universums sehr geprägt und gefördert haben. Wir können alle Pakete direkt mit
+```{r library_tidyverse}
+library(tidyverse)
+```
+
+laden. Doch zurück zu den Daten:
 
 ```{r glimpse, exercise = TRUE}
-library(dplyr)
-
 glimpse(raw)
 ```
 
@@ -854,12 +857,106 @@ summary(the_model) %>% tidy() %>% mutate(varImp = abs(statistic)) %>% arrange(de
 Die Wichtigkeit der Variablen wird über den Betrag der $t$-Statistik gemessen. Weiterhin interessant ist aber auch die Richtung, in die eine Variable wirkt: Diese wird über das Vorzeichen des Koeffizienten (und damit auch der $t$-Statistik) bestimmt. Graphisch können wir uns die Wichtigkeit und Richtung der Variablen über ein paar Zeilen `dplyr` und `ggplot2`-Code erzeugen:
 
 ```{r var_imp_plot, exercise = FALSE}
-the_model %>% tidy() %>% filter(term != "(Intercept)") %>% mutate(sign = as.factor(sign(statistic)), imp = abs(statistic)) %>% 
+
+plot_var_imp <- function(mdl) {
+  mdl %>% tidy() %>% filter(term != "(Intercept)") %>% mutate(sign = as.factor(sign(statistic)), imp = abs(statistic)) %>% 
   top_n(n = 15, wt = imp) %>% 
   ggplot(aes(x = reorder(term, imp), y = statistic, fill = sign)) + geom_col() + coord_flip() +
   scale_fill_discrete() + guides(fill = FALSE) +
   labs(x = "Variable", y = "t-Statistik")
+}
+
+plot_var_imp(the_model)
 ```
+
+## Alternative Modelle
+Anstelle Linearer Regression könnten wir verschiedene andere Modelltypen verwenden: *Entscheidungsbäume*, *Random Forests*, *Gradient Boosting*, *neuronale Netze* usw. Aber angesichts eines schon erreichten Bestimmtheitsmaßes von 0.86 können wir nicht allzu große Verbesserungen erwarten. Und von so einer kleinen Verbesserung wird unsere Entscheidung für oder gegen die Übernahme des Maklerauftrags nicht abhängen. Wir können Verbesserungen eher auf andere Weise erreichen:
+* Können wir ein hinreichend gutes Modell erstellen, dass mit weniger Variablen auskommt? Je weniger Variablen, desto weniger Eingaben benötigt unser Tool und der Prozess läuft schneller und sicherer.
+* Können wir uns vielleicht auf rein numerische Variablen beschränken? Das wäre auch leichter zu benutzen, weil Kategorien nicht immer eindeutig sind.
+
+### Rein numerische Variablen
+
+Zunächst probieren wir aus, wie gut ein lineares Regressionsmodell wird, wenn wir uns auf numerische Daten beschränken.
+Wir gehen dazu analog wie oben vor:
+
+```{r create_numerical_recipe, excercise = FALSE}
+recipe(SalePrice ~ ., data = training_data) %>% 
+  step_rm(all_nominal()) %>% 
+  step_knnimpute(all_predictors(), neighbors = 3) %>%  
+  step_nzv(all_predictors()) %>% 
+  step_center(all_predictors()) %>%
+  step_scale(all_predictors()) %>% 
+  step_corr(all_predictors(), threshold = 0.8) -> housing_rec_num
+```
+
+Das Training des Modells ist ebenfalls analog zu oben:
+
+```{r train_numerical_recipe, exercise = FALSE}
+prepared_recipe_num <- housing_rec_num %>% prep(retain = TRUE)
+
+train_prepped_num <- prepared_recipe_num %>% juice()
+
+lr_mod_num <- linear_reg(mode = "regression") %>% set_engine("lm")
+
+housing_fit_num <- fit(object = lr_mod_num, formula = formula(prepared_recipe_num), data = train_prepped_num)
+
+the_model_num <- housing_fit_num$fit
+summary(the_model_num)
+
+plot_var_imp(the_model_num)
+
+```
+
+Die Modellqualität (gemessen anhand des Bestimmtheitsmaßes) ist also doch deutlich niedriger als beim ersten Modell mit kategorialen Variablen.
+
+### Modell mit Regularisierung
+
+Das Beispiel mit nur numerischen Variablen zeigt, dass man durchaus Gestaltungsmöglichkeiten hat, dabei aber evtl. eine Veränderung der Modellqualität in Kauf nehmen muss. Grundsätzlich ist es wünschenswert ein einfaches und gutes Modell zu haben. Ein einfaches Modell ist dabei (zumindest im Fall der linearen Regression) eines mit wenigen Variablen. Die *LASSO*-Methode (s. @Tibshirani2013), wobei LASSO für *Least Absolute Shrinkage and Selection Operator* steht, ist eine scheinbar kleine Erweiterung der linearen Regression, mit der die zwei Teilprobleme Variablenselektion und Modelloptimierung simultan gelöst werden können: *Regularisierung*.
+
+Die Zielfunktion von LASSO lautet 
+$$ \min_{\beta_0, \beta_1,\ldots,\beta_n} \left(\sum_{j=1}^N \left(y^{(j)} - \left(\beta_0 + \sum_{i=1}^n \beta_i\cdot x_i^{(j)}\right)\right)^2 + \lambda\cdot\sum_{i=1}^n|\beta_i|\right). $$
+Im Vergleich zur Zielfunktion der normalen linearen Regression gibt es also einen zusätzlichen Parameter $\lambda\in\mathrm{R}$ und eine Summe der Absolutwerte der Koeffizienten $\beta_i$. Wichtig ist: $\lambda$ ist ein wählbarer Parameter und keine Variable, die im Lösungsprozess bestimmt wird. Mit dem Parameter $\lambda$ kann man steuern, wie stark die Minimierung der Zielfunktion die Reduktion der Modellkomplexität durch Nullsetzen von einem oder mehreren $\beta_i$ im Vergleich zur Minimierung des quadratischen Fehlerterms anstrebt. Zu den mathematischen Hintergründen empfiehlt sich das auch ansonsten empfehlenswerte Buch @Tibshirani2013.
+
+Für die Anwendung von LASSO in unserem Fall, müssen wir bei der Wahl der Methode ein paar Parameter anpassen:
+```{r setup_lasso_model, exercise = TRUE}
+
+lasso_mod <- linear_reg(mode = "regression", mixture = 1) %>% set_engine("glmnet") %>% translate()
+
+housing_fit_lasso <- fit(object = lasso_mod, formula = formula(prepared_recipe), data = train_prepped)
+
+the_model_lasso <- housing_fit_lasso$fit
+
+```
+
+Die zugrunde liegende Implementierung aus dem `glmnet`-Paket bestimmt eine Folge von $\lambda$-Werten und ermittelt für diese die Koeffizienten und weitere Kennwerte. Aus dem Ergebnis können wir entnehmen, wie sich die Zahl der Koeffizienten $\beta_i$ ungleich 0 in Abhängigkeit vom Wert für $\lambda$ ergibt:
+
+```{r lasso_nonzeros, exercise = TRUE}
+lasso_tab <- tibble(lambda = the_model_lasso$lambda, nonzerovars = the_model_lasso$df)
+
+lasso_tab %>% ggplot(aes(x = log(lambda), y = nonzerovars)) + geom_line(color = "red")
+
+```
+
+Diese Entwicklung der Zahl genutzter Variablen können wir nun der Qualität des Modells gegenüberstellen. Zuerst wenden wir das Modell auf die Trainingsdaten selbst an, um daraus dann den Trainingsfehler zu bestimmen und ihn anzuzeigen.
+
+```{r}
+pred_lasso <- predict.model_fit(housing_fit_lasso, new_data = train_prepped)
+
+pred_lambda_rmse <- pred_lasso %>% 
+  mutate(truth = rep(train_prepped$SalePrice, length(the_model_lasso$lambda)),
+         err = truth - .pred_values,
+         lambda = .pred_lambda) %>% 
+  group_by(lambda) %>% summarise(RMSE = sqrt(mean(err**2)))
+
+scalef <- max(pred_lambda_rmse$RMSE) / max(lasso_tab$nonzerovars)
+ggplot() + geom_line(data = pred_lambda_rmse, aes(x = log(lambda), y = MSE), color = "blue") +
+  geom_line(data = lasso_tab, aes(x = log(lambda), y = scalef * nonzerovars), color = "red") +
+  scale_y_continuous("RMSE", sec.axis = sec_axis(~ ./scalef, name = "# Variablen"))
+
+```
+
+
+
 
 
 
