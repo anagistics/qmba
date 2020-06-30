@@ -80,9 +80,28 @@ Die ersten 11 Videos liefern in ca. 45 Minuten einen einfachen Einstieg in die R
 ## Explorative Datenanalyse
 
 Wenn man eine neue Datenquelle erschließen möchte, bestehen die ersten Schritte aus der *explorativen Datenanalye*. Hierbei geht es darum, ein Verständnis für die Daten zu bekommen und insbesondere Fehler und Auffälligkeiten zu entdecken.
+
+Wir werden für die verschiedenen Schritte Gebrauch von mehreren R-Paketen machen. Pakete sind Sammlungen von Funktionen und Daten, die über die Funktion `library` geladen werden:
+
+```{r}
+suppressPackageStartupMessages({
+  library(MASS)
+  library(VIM)
+  library(dlookr)
+  library(mice)
+  library(tidyverse)
+  library(patchwork)
+  library(corrr)
+  library(car)
+  library(ggcorrplot)
+  library(tidymodels)
+  library(pdp)
+})
+```
+
 Wir laden zunächst die Immobiliendaten über das R-Paket `AmesHousing`, weisen den Daten den Namen `raw` zu und korrigieren die Bezeichnungen der Spalten des Datensatzes, so dass diese im weiteren Verlauf gültige R-Bezeichner ergeben:
 
-```{r prep_raw, exercise = FALSE}
+```{r prep_raw}
 library(AmesHousing)
 raw <- ames_raw
 names(raw) <- make.names(names(raw))
@@ -90,14 +109,11 @@ names(raw) <- make.names(names(raw))
 
 Die letzte Zeile im obigen Codeblock dient dazu, die Bezeichner der Variablen (Spalten des Datensatzes) so umzuwandeln, dass diese bspw. keine Leerzeichen mehr enthalten, die uns sonst an späterer Stelle stören würden.
 
-Um uns einen ersten Eindruck von den Daten zu verschaffen, benutzen wir die Funktion `glimpse` aus dem `dplyr`-Paket. Dieses Paket ist grundsätzlich eine gute Wahl für die Datenanalyse, weil es zahlreiche recht intuitiv anwendbare Funktionen für Datentransformationen, Datenfilterung und -aggregation bietet. Das Paket `dplyr` gehört zum sog. *tidyverse*, einer Sammlung von Paketen, die ein gemeinsames Konzept hinsichtlich ihrer Syntax und Semantik teilen und in den letzten Jahren die Entwicklung des R-Universums sehr geprägt und gefördert haben. Wir können alle Pakete direkt mit
-```{r library_tidyverse}
-library(tidyverse)
-```
+Um uns einen ersten Eindruck von den Daten zu verschaffen, benutzen wir die Funktion `glimpse` aus dem `dplyr`-Paket. Dieses Paket ist grundsätzlich eine gute Wahl für die Datenanalyse, weil es zahlreiche recht intuitiv anwendbare Funktionen für Datentransformationen, Datenfilterung und -aggregation bietet. Das Paket `dplyr` gehört zum sog. *tidyverse*, einer Sammlung von Paketen, die ein gemeinsames Konzept hinsichtlich ihrer Syntax und Semantik teilen und in den letzten Jahren die Entwicklung des R-Universums sehr geprägt und gefördert haben. Wir haben das Paket bereits oben geladen.
 
-laden. Doch zurück zu den Daten:
+Doch zurück zu den Daten:
 
-```{r glimpse, exercise = TRUE}
+```{r glimpse, exercise = TRUE, exercise.setup = "prep_raw"}
 glimpse(raw)
 ```
 
@@ -118,13 +134,8 @@ Aus dieser Übersicht erfahren wir schon eine ganze Menge:
     
 ### Erstes Verständnis der Daten
 
-Mit `glimpse` konnten wir einen ersten Eindruck der Daten gewinnen. Die zahlreichen Einzelwerte bieten aber noch keinen guten Überblick. Dafür ist eine stärker aggregierte Darstellung besser geeignet. Das Paket `dlookr` hilft dabei:
-```{r load_dlookr, exercise = TRUE}
-library(dlookr)
-```
-
-Angewandt auf unsere Immobiliendaten erhalten wir:
-```{r diagnose_all, exercise = TRUE}
+Mit `glimpse` konnten wir einen ersten Eindruck der Daten gewinnen. Die zahlreichen Einzelwerte bieten aber noch keinen guten Überblick. Dafür ist eine stärker aggregierte Darstellung besser geeignet. Das Paket `dlookr` hilft dabei. Angewandt auf unsere Immobiliendaten erhalten wir:
+```{r diagnose_all, exercise = TRUE, exercise.setup = "prep_raw"}
 diagnose(raw)
 ```
 
@@ -136,19 +147,19 @@ diagnose(raw)
 
 Wir können zu numerischen Werten mittels der Funktion `diagnose_numeric` mehr Informationen zu den Variablen erhalten, denen ein numerischer Datentyp zu Grunde liegt:
 
-```{r diagnose_num, exercise = TRUE}
+```{r diagnose_num, exercise = TRUE, exercise.setup = "prep_raw"}
 diagnose_numeric(raw)
 ```
 
 #### Zusammenfassung kategorialer Daten
 
 Für kategoriale Variablen lassen sich keine sinnvollen Quantile und auch kein Mittelwert angeben. Hier sieht die Zusammenfassung für die Variable *MS.Zoning* folgendermaßen aus:
-```{r diagnose_cat, exercise = TRUE}
+```{r diagnose_cat, exercise = TRUE, exercise.setup = "prep_raw"}
 diagnose_category(raw, MS.Zoning)
 ```
 
 *R* bietet übrigens standardmäßig, d.h. ohne weitere Pakete zu laden, die Funktion `summary`, die eine kompakte Übersicht über einen Datensatz bietet:
-```{r summary, exercise = TRUE}
+```{r summary, exercise = TRUE, exercise.setup = "prep_raw"}
 summary(raw)
 ```
 
@@ -159,12 +170,12 @@ Aber man sieht schon deutlich den Unterschied: Die Ausgabe über die Funktionen 
 In vielen Datensätzen, die aus unternehmensinternen IT-Systemen bezogen werden, finden sich Datensätze mit Merkmalen ohne Ausprägung. Es gibt keine pauschale Vorgehensweise, die bzgl. der Behandlung dieser fehlenden Werte immer richtig ist. Zunächst kann es sich lohnen die Spalten (Variablen) in den Datensätzen zu identifizieren, die viele fehlende Werte aufweisen.
 
 Gehen wir nochmal zurück zur obigen Diagnose:
-```{r diagnose_again, exercise = TRUE}
+```{r diagnose_again}
 diagnose(raw)
 ```
 
 Die Spalte *missing_percent* gibt den Anteil fehlender Werte an und wir können die Spalten mit häufig fehlenden Werten über eine Sortierung erkennen:
-```{r diagnose_missing, exercise = TRUE}
+```{r diagnose_missing, exercise = TRUE, exercise.setup = "prep_raw"}
 diagnose(raw) %>% arrange(desc(missing_percent))
 ```
 
@@ -172,14 +183,10 @@ Deutlich wird, dass die Variable *Pool.QC* wohl häufig keine Werte enthält. Ei
 
 Unabhängig davon, was hier im konkreten Fall Ursache für die fehlenden Werte ist: Bei der explorativen Datenanalyse müssen wir stets berücksichtigen, dass das Fehlen selbst auch eine fachliche Information (hier: *kein Pool vorhanden*) bedeuten kann und nicht immer auf Fehler bei der Datenaufnahme oder -übertragung zurückzuführen ist bzw. mit Änderungen in der Erfassungssystematik zu tun haben muss.
 
-Wir haben durch die obige Analyse schon den Verdacht, dass fehlende Werte für mehrere Variablen in typischen Kombinationen vorkommen: Wenn es keinen Keller gibt oder keine Werte erfasst wurden, dann fehlen wahrscheinlich Werte für alle diesbezüglichen Variablen. Um das zu untersuchen, können wir das Paket `VIM` verwenden:
-
-```{r load_vim, exercise = TRUE}
-library(VIM)
-```
+Wir haben durch die obige Analyse schon den Verdacht, dass fehlende Werte für mehrere Variablen in typischen Kombinationen vorkommen: Wenn es keinen Keller gibt oder keine Werte erfasst wurden, dann fehlen wahrscheinlich Werte für alle diesbezüglichen Variablen. Um das zu untersuchen, können wir das Paket `VIM` verwenden. 
 
 Wenden wir es auf unsere Daten an, wobei wir uns auf die Variablen beschränken, die laut vorangehender Analyse fehlende Werte aufweisen:
-```{r missings_chart, exercise = TRUE}
+```{r missings_chart}
 missing_cols <- diagnose(raw) %>% filter(missing_percent > 0.0) %>% pull(variables)
 
 raw %>% select_at(vars(all_of(missing_cols))) %>% aggr(combined = TRUE, sortVars = TRUE, cex.axis = 0.5)
@@ -190,8 +197,6 @@ Die für diese Untersuchung gewählte Beschränkung auf Variablen, die fehlende 
 Gehen wir einem konkreten Verdacht nach, dass fehlende Werte für die *Bsmt*-Variablen mit der Lage der Immobilie zu tun haben. Hierfür können wir die Variable *Neighborhood* und die Variable *Bsmt.Cond* verwenden:
 
 ```{r missings_nhood, exercise = TRUE}
-library(ggplot2)
-
 raw %>% dplyr::select(Neighborhood, Bsmt.Cond) %>% 
     mutate(has_basement = !is.na(Bsmt.Cond)) %>% 
     count(Neighborhood, has_basement) %>% 
@@ -230,8 +235,6 @@ In der Praxis, gerade bei der Verwendung von Daten aus operativen IT-Systemen, w
 
 Wie auch in @Sauer2019 dargestellt wird, ist der richtige Umgang mit fehlenden Werten ein komplexes Thema. Simple Lösungen bestehen darin, die fehlenden Werte durch den Mittelwert der (numerischen) Ausprägungen der Variable zu ersetzen. Bei kategorialen Variablen kann man analog dazu den Modalwert, d.h. die häufigste Ausprägung, als Ersatzwert verwenden. Aber beide Vorgehen sind stark vereinfachend und können zu unrealistischen Merkmalskombinationen für die betroffenen Beobachtungen führen. Technisch kann so eine Ersetzung in R so umgesetzt werden:
 ```{r tidyr_mean_imputation, exercise = TRUE}
-library(tidyr)
-
 completed <- raw %>% mutate_if(is.numeric, ~ replace_na(., mean(., na.rm = TRUE)))
 ```
 
@@ -239,7 +242,6 @@ Die Funktion `replace_na` aus dem `tidyr`-Paket ersetzt *NA*-Werte durch den im 
 
 Um andere Imputationsstrategien kennenzulernen, wechseln wir zeitweise zu einem anderen Datensatz:
 ```{r whiteside_glimpse, exercise = TRUE}
-library(MASS)
 glimpse(whiteside)
 ```
 
@@ -264,15 +266,11 @@ Im folgenden probieren wir aus, was passiert, wenn wir die  Imputationsstrategie
 Die Imputation durch den Mittelwert für alle numerischen Spalten kann durch folgenden Funktionsaufruf erreicht werden:
 
 ```{r mice_mean, exercise = TRUE} 
-library(mice)
-
 imp <- ws_mod %>% mice(method = "mean", m = 1, maxit = 1)
 ```
 
 Das Ergebnis der Imputation können wir mit etwas Aufwand visualisieren (das hier geladene Paket `forcats` bietet Funktionen zur Bearbeitung von kategorialen Variablen):
 ```{r mice_viz_mean_imputation, exercise = TRUE}
-library(forcats)
-
 tmp1 <- imp$imp$Gas %>% 
     transmute(i = as.integer(row.names(.)),
               value = `1`)
@@ -349,9 +347,6 @@ Im Folgenden untersuchen wir die kategorialen Variablen des *AmesHousing*-Datens
 In der Datendokumentation sehen wir, dass kategoriale Variablen als *Nominal* oder *Ordinal* aufgeführt werden. Wir könnten jetzt manuell eine Liste anlegen, aber als Data Scientists machen wir das natürlich nicht, sondern extrahieren die notwendige Information als Datensatz (die Basis für den hier verwendeten Code kommt von [Ron Sarafian](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)).
 
 ```{r derive_types_from_doc, exercise = TRUE}
-library(stringr)
-library(purrr)
-
 housing_variable_types <- function(doc_url = "http://jse.amstat.org/v19n3/decock/DataDocumentation.txt") {
   doku <- url(doc_url, encoding = "latin1") %>% readLines() 
   data_type_lines <- grep("Nominal|Ordinal|Discrete|Continuous", doku, value = TRUE)
@@ -416,8 +411,6 @@ categ_levels <- raw %>% dplyr::select(all_of(rel_categs)) %>% map(~ fct_count(.)
 
 Die Informationen über die Häufigkeit visualisieren wir: Weil alle unsere Plots verschiedene Ausprägungen haben und unterschiedlich viele Ausprägungen, bietet sich der üblich Weg in `ggplot` über `facet_wrap` oder `facet_grid` nicht an. Hier ist das Paket `patchwork` hilfreich, durch das wir eine Liste von Plots automatisch in einer Graphik anordnen können.
 ```{r viz_rare_factor_levels, fig.height = 24, exercise = TRUE}
-library(patchwork)
-
 plot_level_freq <- function(idx, data) {
     data[[idx]] %>% ggplot(aes(x = reorder(f, n), y = n)) + geom_col() + coord_flip() + xlab(names(data)[[idx]])
 }
@@ -447,8 +440,6 @@ Wenn wir nur einzelne Variablen betrachten, können wir als Statistik für den I
 Als ersten Schritt visualisieren wir die Verteilungen (genauer: Dichtefunktionen) der numerischen Variablen. Nachdem wir oben schon die kategorialen Variablen identifiziert haben, können wir die numerischen einfach als Differenz zur vollständigen Variablenmenge ermitteln:
 
 ```{r define_numeric_columns, exercise = TRUE}
-library(tidyselect)
-
 numeric_cols <- setdiff(names(raw), categorials)
 ```
 
@@ -491,15 +482,11 @@ wobei $Cov(X, Y)$ die *Kovarianz* zwischen den Variablen ist. Eine anschauliche 
 In R gibt es mehrere Möglichkeiten der Berechnung des Korrelationskoeffizienten nach Pearson, u.a. die Standardfunktion `cor` und die hier verwendete Funktion `correlate` aus dem `corrr`-Paket:
 
 ```{r example_correlation, exercise = TRUE}
-library(corrr)
-
 (corr_mat <- raw %>% dplyr::select(Gr.Liv.Area, Lot.Area) %>% correlate())
 ```
 
 Wenn wir die Korrelation zwischen vielen Variablenpaaren auswerten wollen, bietet das Paket `ggcorrplot` schöne Unterstützung:
 ```{r viz_correlations, fig.width = 10, exercise = TRUE}
-library(ggcorrplot)
-
 corr_mat <- raw %>% select_at(all_of(numeric_cols)) %>% 
     dplyr::select(-Order) %>% drop_na() %>% 
     cor()
@@ -523,8 +510,6 @@ Die Funktion erhält als Eingabe ein *lineares Modell* basierend auf einer R *Fo
 Zunächst erstellen wir ein lineares Modell mit dem Verkaufspreis al abhängiger Variable und mehreren unabhängigen.
 
 ```{r example_linear_model, exercise = TRUE}
-library(car)
-
 linmod <- lm(SalePrice ~ Gr.Liv.Area + Wood.Deck.SF + Bedroom.AbvGr + Full.Bath + TotRms.AbvGrd,
              data = raw %>% select_at(all_of(numeric_cols)))
 
@@ -637,8 +622,6 @@ housing_data <- housing_data %>%
 
 ### Rezept anlegen
 ```{r create_data_split, exercise = TRUE}
-library(rsample)
-
 set.seed(123456)
 
 data_split <- initial_split(housing_data)
@@ -650,8 +633,6 @@ test_data <- testing(data_split)
 Das Rezept wird angelegt, indem wir die Zielvariable angeben und pauschal alle anderen Variablen als potentielle Prädiktoren vorsehen. Im weiteren Verlauf werden wir das Rezept durch die Verkettung mit `step_*`-Funktionen weiter spezifizieren. Viele der `step_*`-Funktionen aus dem `recipes`-Paket bieten noch Parameter, um das Verhalten weiter zu beeinflussen. Die Dokumentation zum `recipes`-Paket listet unter https://recipes.tidymodels.org/articles/Ordering.html auch eine empfohlene Reihenfolge der Schritte auf.
 
 ```{r create_recipe, exercise = TRUE}
-library(recipes)
-
 housing_rec <- recipe(SalePrice ~ ., data = training_data)
 ```
 
@@ -724,8 +705,6 @@ train_prepped <- prepared_recipe %>% juice()
 Ähnlich wie die Vorverarbeitung, erstellt man mit dem `parsnip`-Paket (wie `recipes` gehört dieses Paket der Paketfamilie `tidymodels` an) eine Spezifikation für ein Modell, das man dann mittels einer *engine*, d.h. einer konkreten Verfahrensimplementierung, berechnet.
 
 ```{r parsnip_model, exercise = TRUE}
-library(parsnip)
-
 lr_mod <- linear_reg(mode = "regression") %>% set_engine("lm")
 ```
 
@@ -743,8 +722,6 @@ summary(the_model)
 Wir können verschiedene Metriken verwenden, um besser die Qualität des Modells (zunächst auf Basis der Trainingsdaten) zu untersuchen. Das Paket `yardstick`, das ebenfalls zu `tidymodels` gehört, bietet hier schon eine gute Auswahl:
 
 ```{r model_metrics, exercise = TRUE}
-library(yardstick)
-
 pred_truth_train <- tibble(SalePrice = train_prepped$SalePrice, predicted = the_model$fitted.values)
 
 metrics(pred_truth_train, SalePrice, predicted)
@@ -770,7 +747,7 @@ residuals %>% ggplot(aes(x = err)) + geom_density()
 Man verwendet häufig den *Q-Q-Plot*, um diese Annahme zu prüfen: Dabei werden die geordneten *standardisierten Fehler* über den erwarteten geordneten Werten der Standardnormalverteilung abgetragen. Zuerst müssen wir daher die standardisierten Fehler (s. @Sheather2009) berechnen:
 
 ```{r qqplot_on_std_res, exercise = TRUE}
-std_res <- MASS::stdres(the_model)
+std_res <- stdres(the_model)
 
 qqnorm(std_res)
 abline(0, 1, col = "red")
@@ -963,8 +940,6 @@ ggplot() + geom_line(data = pred_lambda_rmse, aes(x = log(lambda), y = MSE), col
 
 
 ```{r partial_dependence_plot, exercise = FALSE}
-library(pdp)
-
 partial(the_model, train = train_prepped, pred.var = "Garage.Area", ice = TRUE) %>% plotPartial(center = TRUE)
 
 
