@@ -239,7 +239,7 @@ Aus dieser Übersicht erfahren wir schon eine ganze Menge:
 * die Datentypen der Merkmale
 * eine Vorschau auf die Merksmalsausprägungen.
 
-```{r q_na}
+```{r q_na, echo = FALSE}
 frage("Was bedeuten die Angaben 'NA' bei einigen Variablen?",
       answer("Nord-America"),
       answer("Not available", correct = TRUE),
@@ -268,9 +268,7 @@ Mit `glimpse` konnten wir einen ersten Eindruck der Daten gewinnen. Die zahlreic
 ```{r diagnose_all-solution}
 diagnose(raw)
 ```
-        **Aufgabe**
-        * Was können Sie aus der *unique_rate* von 1 für *PID* ableiten? 
-        * Was sagt Ihnen die *unique_rate* von 16 für die Variable *MS.SubClass*?
+      
         
 #### Zusammenfassung numerischer Daten
 
