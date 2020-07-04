@@ -10,12 +10,20 @@ link-citations: true
 ---
 
 <style>
-div.blackbox {
+div.boxone {
   padding: 1em;
   background: lightblue;
   color: black;
-  border: 2px solid blue;
-  border-radius: 10px;
+  border: 1px solid blue;
+  border-radius: 5px;
+}
+
+div.task {
+  padding: 1em;
+  background: lightyellow;
+  color: black;
+  border: 1px solid dimgray;
+  border-radius: 5px;
 }
 
 div.center {
@@ -27,6 +35,36 @@ div.center {
 library(learnr)
 tutorial_options(exercise.timelimit = 60)
 
+#write_mode <- TRUE
+write_mode <- FALSE
+if (!write_mode) {
+  dir_pattern <- "www/"
+} else {
+  dir_pattern <- "lecture/www/"
+}
+
+
+suppressPackageStartupMessages({
+  library(MASS)
+  library(VIM)
+  library(dlookr)
+  library(mice)
+  library(tidyverse)
+  library(tidyselect)
+  library(patchwork)
+  library(corrr)
+  library(car)
+  library(ggcorrplot)
+  library(tidymodels)
+  library(glmnet)
+  library(ggeffects)
+  library(sjPlot)
+})
+
+library(AmesHousing)
+raw <- ames_raw
+names(raw) <- make.names(names(raw))
+
 ```
 
 
@@ -36,24 +74,25 @@ In dieser Vorlesung geht es um eine Einführung in die praktische Arbeit mit Dat
 
 Es wird nicht darum gehen, die mathematischen Grundlagen oder sogar Beweise für die Methoden zu erklären: Dafür verweise ich auf die Literatur und andere Vorlesungen. 
 
-Das gezeigte Vorgehen orientiert sich an einem realistischen Szenario und die einzelnen Schritte sind typisch und allgemein auch für andere Szenarios gültig. Wir werden keine *cutting edge*-Methoden verwenden, sondern Lineare Regression - zumindest starten wir damit. Diese Methode ist gut verständlich, theoretisch fundiert und ihre Ergebnisse sind gut *erklärbar*. Das heißt nicht, dass diese Methode auch immer *geeignet* ist, aber in vielen praktischen Fällen kann sie ein guter erster Ansatz sein. Tatsächlich ist die Methode in dem gezeigten Prozess recht einfach austauschbar
+Das gezeigte Vorgehen orientiert sich an einem realistischen Szenario und die einzelnen Schritte sind typisch und allgemein auch für andere Szenarios gültig. Wir werden keine *cutting edge*-Methoden verwenden, sondern Lineare Regression - zumindest starten wir damit. Diese Methode ist gut verständlich, theoretisch fundiert und ihre Ergebnisse sind gut *erklärbar*. Das heißt nicht, dass diese Methode auch immer *geeignet* ist, aber in vielen praktischen Fällen kann sie ein guter erster Ansatz sein. Tatsächlich ist die Methode in dem gezeigten Prozess recht einfach austauschbar.
 
-Wir werden einen im Internet und für R verfügbaren Datensatz benutzen, den *Ames Iowa Housing" Datensatz (s. @R-AmesHousing). Dabei handelt es sich um Verkaufsdaten zu Wohnungen und Gebäuden sowie um beschreibende Daten der Immobilien. Es handelt sich damit um ein durchaus anwendungsnahes Szenario.
+Wir werden einen im Internet und für R verfügbaren Datensatz benutzen, den *Ames Iowa Housing* Datensatz (s. @R-AmesHousing). Dabei handelt es sich um Verkaufsdaten zu Wohnungen und Gebäuden sowie um beschreibende Daten der Immobilien. Es handelt sich damit um ein durchaus anwendungsnahes Szenario.
 
 ## Das Szenario
 
-Die *HaiBank AG* möchte im Niedrigzinsumfeld und angesichts steigender Immobilienpreise ihr eigenes Angebot als Immobilienmakler ausbauen. Unter der Marke *ImmoHai* sollen Maklerdienste für Immobilien angeboten werden und eine wichtige Komponente dabei ist die Abschätzung der erwarteten Profitabilität der Vermittlung einer Immobilie. Neben dem eigenen Aufwand auf der Kostenseite ist dafür der erzielbare Verkaufspreis maßgeblich. Traditionell wurde dieser Verkaufspreis von Immobilienexperten nach einer Begehung des Objekts und anhand der Erfahrung eingeschätzt. Weil die Unternehmensstrategie einen deutlichen Ausbau des Maklergeschäfts anstrebt, ist dieser Ansatz aufgrund des hohen Aufwands nicht mehr zu leisten. Stattdessen soll es, ähnlich wie bei der Bonitätsprüfung für Hauskredite, eine Software geben, die anhand von Kennzahlen der Immobilie einen realisierbaren Verkaufspreis prognostiziert. Diese Software soll von Sachbearbeitern im Kundengespräch verwendet werden und dabei helfen zu entscheiden, ob die *HaiBank* als Makler für die betreffende Immobilie auftreten soll.
+Die *HaiBank AG* möchte im Niedrigzinsumfeld und angesichts steigender Immobilienpreise ihr eigenes Angebot als Immobilienmakler ausbauen. Unter der Marke *ImmoHai* sollen Maklerdienste für Immobilien angeboten werden und eine wichtige Komponente dabei ist die Abschätzung der erwarteten Profitabilität der Vermittlung einer Immobilie. Neben dem eigenen Aufwand auf der Kostenseite ist dafür der erzielbare Verkaufspreis maßgeblich. Traditionell wurde dieser Verkaufspreis von Immobilienexperten nach einer Begehung des Objekts und anhand der Erfahrung eingeschätzt. Weil die Unternehmensstrategie einen deutlichen Ausbau des Maklergeschäfts anstrebt, ist dieser Ansatz aufgrund des hohen Aufwands nicht mehr zu leisten. Stattdessen soll es, ähnlich wie bei der Bonitätsprüfung für Hauskredite, eine Software geben, die anhand von Kennzahlen der Immobilie einen realisierbaren Verkaufspreis schätzt. Diese Software soll von Sachbearbeitern im Kundengespräch verwendet werden und dabei helfen zu entscheiden, ob die *HaiBank* als Makler für die betreffende Immobilie auftreten soll.
 
-### Aufgabenstellung
+### Der Auftrag
 
-<div class="blackbox">
+<div class="boxone">
 <div class="center">
-**Aufgabe**
+**Auftrag**
 </div>
 
-Ihre Aufgabe besteht darin, ein **Prognosemodell für Immobilienpreise** und einen Prototyp für die zugehörige **Anwendung** zu entwickeln, die dieses Prognosemodell verwendet.
+Ihre Aufgabe besteht darin, ein **Vorhersagemodell für Immobilienpreise** und ein technisches Grobkonzept für die *Anwendung*, die dieses Modell verwendet, zu entwickeln.
 </div>
 
+### Rahmenbedingungen
 
 Weil Ihre hauseigene IT auf absehbare Zeit noch damit beschäftigt ist, die bislang getrennt in jeder Filiale in Excel-Dateien festgehaltenen Immobiliengeschäfte in eine zentrale Datenbank zu überführen, haben Sie sich aus dem Internet eine frei verfügbare Datensammluung von Immobilienpreisen besorgt. Mit Hilfe dieser Daten können Sie schon einmal den ganzen Prozess der Modellentwicklung durchlaufen und einen Prototypen erstellen, damit Ihr Management auch nachvollziehen kann, wie die fertige Lösung aussehen wird.
 
@@ -61,21 +100,78 @@ Als technische Plattform stehen Ihnen
 
 * die Programmiersprache *R*, 
 * die Entwicklungsumgebung *RStudio* und 
-* das auf *R* basierende Framework *flexdashboard* 
+* ggf. das auf *R* basierende Framework *flexdashboard* 
 
-für die Entwicklung von Modell und Anwendung zur Verfügung.
+für die Entwicklung von Modell und Anwendung zur Verfügung. *flexdashboard* werden Sie nur verwenden, wenn wir im Rahmen dieses Kurses auch einen Prototypen entwickeln.
 
-### Grundsätzliches zur Arbeit mit *R*
+#### Grundsätzliches zur Arbeit mit *R*
 
 Neben Python ist *R* eine der derzeit populärsten Sprachen für Datenanalye, Statistik und maschinellem Lernen. Während Python als vielseitige Programmiersprache gerne von einer Community eingesetzt wird, die aus der Softwareentwicklung kommt, hat *R* seinen Ursprung in der statistischen und wissenschaftlichen Community und bietet sehr vielfältige Möglichkeiten für (explorative) Datenanalyse und statistische Methoden. Zu den letzteren kann man im weiteren Sinne auch Methoden des maschinellen Lernens zählen.
 
-### Einstieg in R
+##### Einstieg in R
 
-Es gibt zahlreiche Bücher, webbasierte Tutorials und Videos für den Einstieg in R. Dieses Tutorial solld as nicht leisten. Stattdessen verweise ich hier auf eine Reihe von Videos von *Data Science Dojo*, die man hier finden kann: 
+Es gibt zahlreiche Bücher, webbasierte Tutorials und Videos für den Einstieg in R. Dieses Tutorial soll das nicht leisten. Stattdessen verweise ich hier auf eine Reihe von Videos von *Data Science Dojo*, die man hier finden kann: 
 
-![](https://www.youtube.com/playlist?list=PL8eNk_zTBST8j2BU5HYFQogdCjtrHyQAx)
+![](https://youtu.be/UX6yNAC2sAc)
 
 Die ersten 11 Videos liefern in ca. 45 Minuten einen einfachen Einstieg in die R Syntax, Datentypen und wichtige Sprachkonstrukte.
+
+<div class="task">
+<div class="center">
+**Aufgabe**
+</div>
+
+Gucken Sie sich bitte die ersten 11 Videos an. Die komplette Playlist finden Sie auch unter https://www.youtube.com/playlist?list=PL8eNk_zTBST8j2BU5HYFQogdCjtrHyQAx. Wenn Sie die Videos gesehen haben, werden Sie es bei den folgenden Codebeispielen leichter haben. Wahrscheinlich haben Sie schon spannendere Filme gesehen und vieles kommt Ihnen aus anderen Sprachen bekannt vor - aber R weicht zum Teil deutlich von den üblichen bekannten Sprachen ab, und Sie sollten ein paar der Besonderheiten kennen.
+
+Zeitvorgabe: 45 Min
+</div>
+
+## Konzeptionsphase
+
+Sie haben jetzt also den Auftrag erhalten, die oben beschriebene Anwendung auf der Basis eines statistischen Modells zu entwickeln. 
+
+<div class="task">
+<div class="center">
+**Aufgabe**
+</div>
+
+Um ein umfangreiches Verständnis für den Auftrag zu erhalten, sollten Sie die folgenden Punkte mit Ihrem Team besprechen und dokumentieren:
+* Wer werden die Anwenderin/der Anwender sein? Wie interagieren diese mit der Applikation? Was erwarten sie?
+* Welche Daten werden benötigt? Welchen Lebenszyklus der Daten erwarten Sie, d.h. wie oft ändern sich Daten? Werden Daten entfernt? Wann?
+* Werden Sie personenbezogene Daten im Sinne der DSGVO verarbeiten?
+* Mit welchen anderen IT-Systemen wird Ihre Applikation kommunizieren?
+* Stellen Sie sich das statistische Modell als eine technische Komponente vor, bspw. als Webservice: Wie fügt sich das Modell dann in die Gesamtarchitektur ein?
+* Wie ist der gesamte *Fluß* der Applikation? 
+
+Am besten Veranschaulichen Sie das Konzept durch eine einfache Graphik. Dies ist der erste Entwurf und sicher nicht final - streben Sie also keine Perfektion an.
+
+Zeitvorgabe: 15 Min, danach Vorstellung nach Zufallsprinzip.
+</div>
+
+### Einordnung des Modells
+
+Es gibt sehr viele verschiedene statische Modelle und Methoden des maschinellen Lernens. Wie lässt sich das angestrebte Modell in diesem Szenario einordnen? 
+
+```{r qregr, echo=FALSE}
+question("Denken Sie an die Ihnen bekannten Typen von Problemstellungen des maschinellen Lernens. Bei der Problemstellung der Immobilienpreisvorhersage handelt es sich um",
+  answer("ein Regressionsproblem.", correct = TRUE),
+  answer("ein Klassifikationsproblem."),
+  answer("ein Clusterungsproblem."),
+  answer("ein Zeitreihenprognoseproblem."),
+  allow_retry = TRUE
+)
+```
+
+```{r qclass, echo=FALSE}
+question("Angenommen, das Ergebnis der Software wäre eine Empfehlung zur Annahme oder Ablehnung des Maklerauftrags. Um was für eine Art von Problemstellung würde es dann gehen?",
+  answer("Ein Regressionsproblem."),
+  answer("Ein Klassifikationsproblem.", correct = TRUE),
+  answer("Ein Clusterungsproblem."),
+  answer("Ein Zeitreihenprognoseproblem."),
+  allow_retry = TRUE
+)
+```
+
 
 ## Explorative Datenanalyse
 
@@ -83,25 +179,25 @@ Wenn man eine neue Datenquelle erschließen möchte, bestehen die ersten Schritt
 
 Wir werden für die verschiedenen Schritte Gebrauch von mehreren R-Paketen machen. Pakete sind Sammlungen von Funktionen und Daten, die über die Funktion `library` geladen werden:
 
-```{r}
-suppressPackageStartupMessages({
-  library(MASS)
-  library(VIM)
-  library(dlookr)
-  library(mice)
-  library(tidyverse)
-  library(patchwork)
-  library(corrr)
-  library(car)
-  library(ggcorrplot)
-  library(tidymodels)
-  library(pdp)
-})
+```{r show_libraries, eval = FALSE}
+library(MASS)
+library(VIM)
+library(dlookr)
+library(mice)
+library(tidyverse)
+library(patchwork)
+library(corrr)
+library(car)
+library(ggcorrplot)
+library(tidymodels)
+library(glmnet)
+library(ggeffects)
+library(sjPlot)
 ```
 
 Wir laden zunächst die Immobiliendaten über das R-Paket `AmesHousing`, weisen den Daten den Namen `raw` zu und korrigieren die Bezeichnungen der Spalten des Datensatzes, so dass diese im weiteren Verlauf gültige R-Bezeichner ergeben:
 
-```{r prep_raw}
+```{r prep_raw, eval = FALSE}
 library(AmesHousing)
 raw <- ames_raw
 names(raw) <- make.names(names(raw))
@@ -113,9 +209,16 @@ Um uns einen ersten Eindruck von den Daten zu verschaffen, benutzen wir die Funk
 
 Doch zurück zu den Daten:
 
-```{r glimpse, exercise = TRUE, exercise.setup = "prep_raw"}
+```{r glimpse, exercise = TRUE}
+# Lernen Sie die Daten kennen, indem Sie die Funktion `glimpse` auf die Daten `raw` anwenden
+
+```
+
+```{r glimpse-solution}
 glimpse(raw)
 ```
+
+
 
 Aus dieser Übersicht erfahren wir schon eine ganze Menge:
 
@@ -135,7 +238,7 @@ Aus dieser Übersicht erfahren wir schon eine ganze Menge:
 ### Erstes Verständnis der Daten
 
 Mit `glimpse` konnten wir einen ersten Eindruck der Daten gewinnen. Die zahlreichen Einzelwerte bieten aber noch keinen guten Überblick. Dafür ist eine stärker aggregierte Darstellung besser geeignet. Das Paket `dlookr` hilft dabei. Angewandt auf unsere Immobiliendaten erhalten wir:
-```{r diagnose_all, exercise = TRUE, exercise.setup = "prep_raw"}
+```{r diagnose_all, exercise = TRUE}
 diagnose(raw)
 ```
 
@@ -147,19 +250,19 @@ diagnose(raw)
 
 Wir können zu numerischen Werten mittels der Funktion `diagnose_numeric` mehr Informationen zu den Variablen erhalten, denen ein numerischer Datentyp zu Grunde liegt:
 
-```{r diagnose_num, exercise = TRUE, exercise.setup = "prep_raw"}
+```{r diagnose_num, exercise = TRUE}
 diagnose_numeric(raw)
 ```
 
 #### Zusammenfassung kategorialer Daten
 
 Für kategoriale Variablen lassen sich keine sinnvollen Quantile und auch kein Mittelwert angeben. Hier sieht die Zusammenfassung für die Variable *MS.Zoning* folgendermaßen aus:
-```{r diagnose_cat, exercise = TRUE, exercise.setup = "prep_raw"}
+```{r diagnose_cat, exercise = TRUE}
 diagnose_category(raw, MS.Zoning)
 ```
 
 *R* bietet übrigens standardmäßig, d.h. ohne weitere Pakete zu laden, die Funktion `summary`, die eine kompakte Übersicht über einen Datensatz bietet:
-```{r summary, exercise = TRUE, exercise.setup = "prep_raw"}
+```{r summary, exercise = TRUE}
 summary(raw)
 ```
 
@@ -170,12 +273,13 @@ Aber man sieht schon deutlich den Unterschied: Die Ausgabe über die Funktionen 
 In vielen Datensätzen, die aus unternehmensinternen IT-Systemen bezogen werden, finden sich Datensätze mit Merkmalen ohne Ausprägung. Es gibt keine pauschale Vorgehensweise, die bzgl. der Behandlung dieser fehlenden Werte immer richtig ist. Zunächst kann es sich lohnen die Spalten (Variablen) in den Datensätzen zu identifizieren, die viele fehlende Werte aufweisen.
 
 Gehen wir nochmal zurück zur obigen Diagnose:
+
 ```{r diagnose_again}
 diagnose(raw)
 ```
 
 Die Spalte *missing_percent* gibt den Anteil fehlender Werte an und wir können die Spalten mit häufig fehlenden Werten über eine Sortierung erkennen:
-```{r diagnose_missing, exercise = TRUE, exercise.setup = "prep_raw"}
+```{r diagnose_missing, exercise = TRUE}
 diagnose(raw) %>% arrange(desc(missing_percent))
 ```
 
@@ -340,13 +444,43 @@ Wie oben erwähnt, können kategoriale Variablen nicht gut numerisch zusammengef
 raw %>% ggplot(aes(x = MS.Zoning)) + geom_histogram(stat = "count")
 ```
 
+```{r prep_var_type_handling, include = FALSE}
+housing_variable_types <- function(doc_url = "http://jse.amstat.org/v19n3/decock/DataDocumentation.txt") {
+  doku <- url(doc_url, encoding = "latin1") %>% readLines() 
+  data_type_lines <- grep("Nominal|Ordinal|Discrete|Continuous", doku, value = TRUE)
+
+  data_type_lines %>% str_match_all("^(.+)( |\\s)\\((.+)\\)(\\s*):") %>% compact %>% 
+    map(~ c(VAR = .[,2], TYPE = .[,4])) %>% map_dfr(as.list) %>% 
+    mutate(VAR = make.names(VAR))
+}
+
+type_data <- housing_variable_types()
+
+housing_categorials <- function(type_frame) {
+  type_frame %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% dplyr::select(VAR) %>% 
+    mutate(VAR = case_when(
+        VAR == "Exterior.1" ~ "Exterior.1st",
+        VAR == "Exterior.2" ~ "Exterior.2nd",
+        VAR == "HeatingQC" ~ "Heating.QC",
+        VAR == "KitchenQual" ~ "Kitchen.Qual",
+        VAR == "FireplaceQu" ~ "Fireplace.Qu",
+        VAR == "BsmtFinType.2" ~ "BsmtFin.Type.2",
+        TRUE ~ VAR
+    )) %>% pull()
+}
+
+categorials <- housing_categorials(type_data)
+
+```
+
+
 Aus Histogrammen können wir ableiten, welche Werte je Variable sehr selten auftreten. Gerade bei der Analyse kategorialer Variablen stellt sich oft heraus, dass einige Ausprägungen sehr selten auftreten. Eine statistische Analyse auf Basis dieser Ausprägungen würde statistisch wertlos sein, da die Anzahl der Beobachtungen pro Ausprägung nicht für statistisch valide Aussagen ausreicht. Daher ist es empfehlenswert und üblich, seltene Ausprägungen zu Gruppen zusammenzufassen und eine neue Dummy-Ausprägung, bspw. *sonstige*, für diese einzuführen.
 
 Im Folgenden untersuchen wir die kategorialen Variablen des *AmesHousing*-Datensatzes. Um eine vollständige Liste der kategorialen Variablen zu erhalten, hilft die [Dokumentation des AmesHousing-Datensatzes](http://jse.amstat.org/v19n3/decock/DataDocumentation.txt). Übrigens finden sich auf der Seite [Gimme Shelter](https://www.gimme-shelter.com/category/term-2/) recht gute Erklärungen einiger (amerikanischen) Fachbegriffe der Immobilienbranche. 
 
 In der Datendokumentation sehen wir, dass kategoriale Variablen als *Nominal* oder *Ordinal* aufgeführt werden. Wir könnten jetzt manuell eine Liste anlegen, aber als Data Scientists machen wir das natürlich nicht, sondern extrahieren die notwendige Information als Datensatz (die Basis für den hier verwendeten Code kommt von [Ron Sarafian](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)).
 
-```{r derive_types_from_doc, exercise = TRUE}
+```{r derive_types_from_doc, eval = FALSE}
 housing_variable_types <- function(doc_url = "http://jse.amstat.org/v19n3/decock/DataDocumentation.txt") {
   doku <- url(doc_url, encoding = "latin1") %>% readLines() 
   data_type_lines <- grep("Nominal|Ordinal|Discrete|Continuous", doku, value = TRUE)
@@ -361,7 +495,7 @@ type_data <- housing_variable_types()
 
 Jetzt liegen die Spaltenbezeichnungen zusammen mit der Datenart als `data.frame` für die weitere Verarbeitung vor. Leider stellt sich heraus, dass die Dokumentation in einigen Fällen von den Spaltenbezeichnung im Datensatz abweicht, so dass wir diese Bezeichnungen manuell korrigieren müssen. Ein schönes Beispiel dafür, dass man bei der explorativen Datenanalyse immer wieder unerwartet auf Probleme stößt.
 
-```{r fix_broken_docs, exercise = TRUE}
+```{r fix_broken_docs, eval = FALSE}
 housing_categorials <- function(type_frame) {
   type_frame %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% dplyr::select(VAR) %>% 
     mutate(VAR = case_when(
@@ -427,11 +561,11 @@ Weiter unten bei der Datenvorverarbeitung für die Modellierung, werden wir dahe
 
 Manchmal ist es sinnvoll, Variablen aus fachlichen Gründen zu transformieren. Hier am Beispiel von Immobilien können wir uns vorstellen, dass der Preis der Immobilie von deren Alter abhängt. Die Variable *Year.Built* erfasst das Baujahr und *Year.Remod.Add* erfasst das Jahr des letzten Umgestaltung. Wir könnten hier zwei neue Variablen einführen, die stattdessen das *Alter* der Immobilie bzw. die Jahre seit der letzten Umgestaltung abbilden. 
 
-## Informationsbeiträge von Variablen
+### Informationsbeiträge von Variablen
 
 Nachdem wir uns im vorherigen Abschnitt mit kategorialen Variablen befasst haben, kehren wir hier wieder zurück zu den numerischen Variablen. Wir sollten uns in Erinnerung rufen, das wir letztlich ein Modell für den Verkaufspreis von Immobilien entwickeln wollen. Dahinter steckt die Annahme, dass verschiedene Eigenschaften bzw. Eigenschaftskombinationen von Immobilien Einfluss auf den Preis haben. 
 
-### Beitrag einzelner Variablen
+#### Beitrag einzelner Variablen
 
 Wir können davon ausgehen, dass Eigenschaften, die für alle Immobilien gleich oder zumindest sehr ähnlich sind, auf den Preis keinen Einfluss haben werden. Wenn wir also Variablen identifizieren, die wenig informativ sind, können wir diese von der weiteren Betrachtung ausschließen.
 
@@ -470,7 +604,7 @@ Durch die Dichtediagramme können wir schon ahnen, welche Variablen wahrscheinli
 
 Für die Datenvorverarbeitung werden wir Variablen entfernen, die eine niedrige Varianz haben. Umgekehrt können wir in der Analyse auch die Variablen ignorieren, die nur verschiedene Werte aufweisen - hier dürfte es sich fast immer um Datensatzschlüssel handeln.
 
-### Zusammenhang zwischen Variablen: Korrelation
+#### Zusammenhang zwischen Variablen: Korrelation
 
 Zwischen metrischen Variablen bestehen oftmals mehr oder weniger stark ausgeprägte lineare Zusammenhänge. Dieser Zusammenhang lässt sich als *Korrelationskoeffizient* (man unterscheidet mehrere verschiedene Korrelationskoeffizienten, s. auch @Sauer2019. Hier verwenden wir den nach *Pearson*). Der Begriff *metrische Variable* bedeutet, dass die Variable intervall- oder verhältnisskaliert ist. Das gilt für stetige numerische Variablen und oftmals auch für diskrete numerische Variablen - im Prinzip immer dann, wenn man die Variable messen oder zumindest zählen kann. 
 
@@ -597,7 +731,7 @@ Damit wir aber sicher sind, dass wir auch auf den richtigen Daten arbeiten, wied
 
 ### Grundlage (wieder)herstellen
 
-```{r recreate_housing_data, exercise = TRUE}
+```{r recreate_housing_data}
 housing_data <- ames_raw
 names(housing_data) <- make.names(names(housing_data))
 
@@ -609,19 +743,35 @@ housing_data <- housing_data %>% mutate_at(vars(all_of(categorials)), as.factor)
 
 ```
 
-### Transformationen
-In diesem Abschnitt führen wir die zuvor genannten fachlichen Transformationen durch:
-```{r domain_specific_transformations, exercise = FALSE}
+```{r prep_housing, include = FALSE}
 housing_data <- housing_data %>% 
   mutate(Age = max(Year.Built) - Year.Built, 
          Years_since_remod = max(Year.Remod.Add) - Year.Remod.Add) %>% 
-  dplyr::select(-Year.Built, -Year.Remod.Add)
+  select(-Year.Built, -Year.Remod.Add)
 
+set.seed(123456)
+
+data_split <- initial_split(housing_data)
+
+training_data <- training(data_split)
+test_data <- testing(data_split)
+
+housing_rec <- recipe(SalePrice ~ ., data = training_data)
 ```
 
 
-### Rezept anlegen
-```{r create_data_split, exercise = TRUE}
+### Transformationen
+In diesem Abschnitt führen wir die zuvor genannten fachlichen Transformationen durch:
+```{r domain_specific_transformations, eval = FALSE}
+housing_data <- housing_data %>% 
+  mutate(Age = max(Year.Built) - Year.Built, 
+         Years_since_remod = max(Year.Remod.Add) - Year.Remod.Add) %>% 
+  select(-Year.Built, -Year.Remod.Add)
+```
+
+
+### Trainings- und Testdatensplit
+```{r create_data_split, eval = FALSE}
 set.seed(123456)
 
 data_split <- initial_split(housing_data)
@@ -630,15 +780,16 @@ training_data <- training(data_split)
 test_data <- testing(data_split)
 ```
 
+### Rezept anlegen
 Das Rezept wird angelegt, indem wir die Zielvariable angeben und pauschal alle anderen Variablen als potentielle Prädiktoren vorsehen. Im weiteren Verlauf werden wir das Rezept durch die Verkettung mit `step_*`-Funktionen weiter spezifizieren. Viele der `step_*`-Funktionen aus dem `recipes`-Paket bieten noch Parameter, um das Verhalten weiter zu beeinflussen. Die Dokumentation zum `recipes`-Paket listet unter https://recipes.tidymodels.org/articles/Ordering.html auch eine empfohlene Reihenfolge der Schritte auf.
 
-```{r create_recipe, exercise = TRUE}
+```{r create_recipe, eval = FALSE}
 housing_rec <- recipe(SalePrice ~ ., data = training_data)
 ```
 
 ### Imputation fehlender Werte
 Zunächst werden wir fehlende Werte mit einer komplexeren Imputationsstrategie, nämlich *kNN-Imputation* (s. u.a. @Beretta2016), durch plausible Werte ersetzen:
-```{r recipe_step_imputation, exercise = TRUE}
+```{r recipe_step_imputation, eval = FALSE}
 housing_rec %>% 
   step_knnimpute(all_predictors(), neighbors = 3) -> housing_rec
 ```
@@ -649,7 +800,7 @@ Um noch etwas deutlicher den *Fluss* der Transformationen darzustellen, haben wi
 ### Seltene Kategorien zusammenfassen
 
 Wir haben oben gesehen, dass es einige kategoriale Variablen gibt, die sehr seltene Ausprägungen aufweisen. Diese fassen wir zu Gruppen zusammen:
-```{r recipe_step_rare_levels, exercise = TRUE}
+```{r recipe_step_rare_levels, eval = FALSE}
 housing_rec %>% 
   step_other(all_nominal(), threshold = 0.05) -> housing_rec
 ```
@@ -658,7 +809,7 @@ housing_rec %>%
 
 Bei der linearen Regression werden die Variablenausprägungen $x_i$ mit den Koeffizienten $\beta_i$ multiplziert und addiert. Es muss sich daher bei den Ausprägungen um Zahlenwerte handeln - kategoriale Variablen verwenden aber oft alphanumerische Bezeichnungen für die Ausprägungen. Und selbst wenn die Ausprägungen über Zahlen codiert werden, lässt sich mit diesen Zahlen nicht sinnvoll rechnen. Wir benötigen also einen Weg, die Ausprägungen kategorialer Variablen in Rechengrößen umzuwandeln. Dies wird durch verschiedene Formen der *Codierung* geleistet. Es gibt verschiedene Formen der Codierung, die sich hinsichtlich ihrer statistischen Eigenschafen unterscheiden. Gebräuchlich, wenn auch nicht immer die beste Wahl, sind das *one-hot-encoding* und das *dummy-encoding*. Beim one-hot-encoding einer kategorialen Variablen $x_i$ führt man für jede Ausprägung $\ell$ eine neue Variable $x_i^\ell$ ein, die über die Werte 0 und 1 für jede Beobachtung codiert, ob die ursprüngliche Ausprägung $\ell$ war (1) oder nicht (0). Die neuen Variablen sind also Indikatorvariablen für die Ausprägungen. Bei $L$ verschiedenen Ausprägungen erhält man  damit beim one-hot-encoding $L$ neue Variablen, die die ursprüngliche Variable im Modell ersetzen. Allerdings ist diese Codierung redundant, denn es würden $L-1$ binäre Variablen ausreichen, um $L$ verschiedene Ausprägungen zu modellieren: Der Fall, dass alle $L-1$ Variablen den Wert 0 haben wird nämlich beim one-hot-encoding nicht genutzt, weil immer genau eine Variable den Wert 1 hat. Beim dummy-encoding hingegen wählt man eine Referenzausprägung und weist dieser implizit die Codierung durch $L-1$ 0-Werte zu. Dies hat auch den Vorteil, dass die durch one-hot-encoding eingeführte lineare Abhängigkeit zwischen den $L$ Variablen und der (impliziten) Variable für den $\beta_0$-Term (man kann sich eine Variable $x_0=1$ denken) vermieden wird. Bei der dummy-Codierung muss man entscheiden, welche Ausprägung zur Referenzausprägung wird. Im Regressionsmodell entspricht $\beta_0$ dann dem Mittelwert der Referenzausprägung. Es ist daher wichtig eine Ausprägung zur Referenzausprägung zu wählen, die im Datensatz häufig vorkommt - ansonsten ist der Mittelwert nicht valide.    
 
-```{r recipe_step_dummy_encoding, exercise = TRUE}
+```{r recipe_step_dummy_encoding, eval = FALSE}
 housing_rec %>% step_dummy(all_nominal(), one_hot = FALSE) -> housing_rec
 ```
 
@@ -666,7 +817,7 @@ housing_rec %>% step_dummy(all_nominal(), one_hot = FALSE) -> housing_rec
 
 Der nächste Schritt entfernt die Variablen, die entweder eine sehr kleine Varianz oder eine sehr stark dominierende Ausprägung haben, d.h. wir wenden die Funktion `step_nvz` sowohl auf numerische als auch auf kategoriale oder nominale Variablen an.  
 
-```{r recipe_step_low_variance, exercise = TRUE}
+```{r recipe_step_low_variance, eval = FALSE}
 housing_rec %>% 
   step_nzv(all_predictors()) -> housing_rec
 ```
@@ -677,7 +828,7 @@ Bei der linearen Regression ist der Erwartungswert der Zielvariable $y$ gleich d
 
 Manchmal *skaliert* man die Variablen auch noch zusätzlich zur Zentrierung: Das bedeutet, dass man die Werte auch noch durch die Standardabweichung dividiert. In der Statistik nennt man beide Schritte zusammen *z-Transformation*. Damit sind die Verteilungen der Variablenwerte vergleichbar und die Koeffizienten $\beta_i$ sind damit auch einfacher vergleichbar. Tatsächlich führt man durch den Schritt eine Einheitenumrechnung durch und alle Koeffizienten $\beta_i$ haben dadurch dieselbe Einheit.
 
-```{r recipe_scale_vars, exercise = TRUE}
+```{r recipe_scale_vars, eval = FALSE}
 housing_rec %>% step_center(all_predictors()) %>%
   step_scale(all_predictors()) -> housing_rec
 ```
@@ -686,16 +837,27 @@ housing_rec %>% step_center(all_predictors()) %>%
 ### Bereinigung um stark korrelierte Variablen
 
 Wie oben erläutert, können stark korrelierte Variablen die Robustheit des Modells und dessen Interpretation verschlechtern. Daher entfernen wir stark korrelierte numerische Variablen:
-```{r recipe_handle_correlations, exercise = TRUE}
+```{r recipe_handle_correlations, eval = FALSE}
 housing_rec %>% step_corr(all_predictors(), threshold = 0.8) -> housing_rec
 ```
 
 ## Modellbildung
 
+```{r prep_model, include = FALSE}
+housing_rec %>% 
+  step_knnimpute(all_predictors(), neighbors = 3) %>% 
+  step_other(all_nominal(), threshold = 0.05) %>% 
+  step_dummy(all_nominal(), one_hot = FALSE) %>% 
+  step_nzv(all_predictors()) %>% 
+  step_center(all_predictors()) %>%
+  step_scale(all_predictors()) %>% 
+  step_corr(all_predictors(), threshold = 0.8) -> housing_rec
+```
+
 ### Trainingsdaten vorverarbeiten
 
 Zuerst müssen wir die Trainingsdaten anhand des oben entwickelten *Rezepts* vorverarbeiten.
-```{r prep_training, exercise = FALSE}
+```{r prep_training, eval = FALSE}
 prepared_recipe <- housing_rec %>% prep(retain = TRUE)
 
 train_prepped <- prepared_recipe %>% juice()
@@ -704,12 +866,12 @@ train_prepped <- prepared_recipe %>% juice()
 ### Modell erstellen
 Ähnlich wie die Vorverarbeitung, erstellt man mit dem `parsnip`-Paket (wie `recipes` gehört dieses Paket der Paketfamilie `tidymodels` an) eine Spezifikation für ein Modell, das man dann mittels einer *engine*, d.h. einer konkreten Verfahrensimplementierung, berechnet.
 
-```{r parsnip_model, exercise = TRUE}
+```{r parsnip_model, eval = FALSE}
 lr_mod <- linear_reg(mode = "regression") %>% set_engine("lm")
 ```
 
 Das *Lernen* des Modells erfolgt dann über die `fit`-Funktion:
-```{r}
+```{r fit_lr_model, eval = FALSE}
 housing_fit <- fit(object = lr_mod, formula = formula(prepared_recipe), data = train_prepped)
 
 the_model <- housing_fit$fit
@@ -719,9 +881,28 @@ summary(the_model)
 
 ### Modell evaluieren
 
+```{r prep_model_eval, include = FALSE}
+if (write_mode) {
+  prepared_recipe <- housing_rec %>% prep(retain = TRUE)
+  saveRDS(prepared_recipe, file = "lecture/www/prepared_recipe.rds")
+} else {
+  prepared_recipe <- readRDS(file = paste0(dir_pattern, "prepared_recipe.rds"))
+}
+train_prepped <- prepared_recipe %>% juice()
+lr_mod <- linear_reg(mode = "regression") %>% set_engine("lm")
+if (write_mode) {
+  housing_fit <- fit(object = lr_mod, formula = formula(prepared_recipe), data = train_prepped)
+  saveRDS(housing_fit, file = "lecture/www/housing_fit.rds")
+} else {
+  housing_fit <- readRDS(file = paste0(dir_pattern, "housing_fit.rds"))
+}
+the_model <- housing_fit$fit
+```
+
+
 Wir können verschiedene Metriken verwenden, um besser die Qualität des Modells (zunächst auf Basis der Trainingsdaten) zu untersuchen. Das Paket `yardstick`, das ebenfalls zu `tidymodels` gehört, bietet hier schon eine gute Auswahl:
 
-```{r model_metrics, exercise = TRUE}
+```{r model_metrics, eval = FALSE}
 pred_truth_train <- tibble(SalePrice = train_prepped$SalePrice, predicted = the_model$fitted.values)
 
 metrics(pred_truth_train, SalePrice, predicted)
@@ -733,20 +914,20 @@ $\sqrt{\frac{1}{N}\sum_{j=1}^{N}(y^{(j)}- \hat{y}^{(j)})^2}$, und *mae* für den
 
 Bei linearer Regression empfiehlt es sich, die Ergebnisse graphisch zu veranschaulichen.
 
-```{r viz_predictions, exercise = TRUE}
+```{r viz_predictions, eval = FALSE}
 pred_truth_train %>% ggplot(aes(x = SalePrice, y = predicted)) + geom_point() + geom_smooth(method = "lm")
 ```
 
 Die Vorhersagefehler sollten, entsprechend der Modellannahme, normalverteilt sein:
 
-```{r viz_residual_density, exercise = TRUE}
+```{r viz_residual_density, eval = FALSE}
 residuals <- pred_truth_train %>% mutate(err = SalePrice - predicted)
 residuals %>% ggplot(aes(x = err)) + geom_density()
 ```
 
 Man verwendet häufig den *Q-Q-Plot*, um diese Annahme zu prüfen: Dabei werden die geordneten *standardisierten Fehler* über den erwarteten geordneten Werten der Standardnormalverteilung abgetragen. Zuerst müssen wir daher die standardisierten Fehler (s. @Sheather2009) berechnen:
 
-```{r qqplot_on_std_res, exercise = TRUE}
+```{r qqplot_on_std_res, eval = FALSE}
 std_res <- stdres(the_model)
 
 qqnorm(std_res)
@@ -755,7 +936,7 @@ abline(0, 1, col = "red")
 
 Wir sehen, dass die standardisierten Residuen (Fehler) für einen Großteil des Wertebereichs schon sehr gut den Erwartungen, nämlich einer Standardnormalverteilung zu folgen, entsprechen. Aber es gibt auch Ausnahmen und wir prüfen daher die Standardresiduen abgetragen über den Indices der Beobachtungen. Zusätzlich plotten wir in rot den (skalierten) Verkaufspreis.
 
-```{r viz_srdres_over_index, exercise = TRUE}
+```{r viz_srdres_over_index, eval = FALSE}
 idx_stdres <- tibble::enframe(std_res, name = "Index", value = "StdRes") %>% 
   mutate(Index = as.integer(Index)) %>% 
   bind_cols(train_prepped %>% dplyr::select(SalePrice))
@@ -775,7 +956,7 @@ idx_stdres %>%
 
 Das Modell scheint besonders bei höheren Verkaufspreisen auch größere Fehler aufzuweisen, was wir überprüfen:
 
-```{r viz_stdres_over_target, exercise = TRUE}
+```{r viz_stdres_over_target, eval = FALSE}
 idx_stdres %>% 
   ggplot(aes(x = SalePrice, y = StdRes )) +
   geom_point(alpha = 0.3) 
@@ -791,15 +972,39 @@ Für den Moment belassen wir es aber dabei. Zukünftige Versionen dieses Tutoria
 
 ### Modell auf Testdaten anwenden
 
+```{r prep_test_mode, include = FALSE}
+if (write_mode) {
+  test_prepped <- prepared_recipe %>% bake(new_data = test_data)
+  saveRDS(test_prepped, file = "lecture/www/test_prepped.rds")
+} else {
+  test_prepped <- readRDS(file = paste0(dir_pattern, "test_prepped.rds"))
+}
+
+housing_pred <- predict(the_model, test_prepped)
+
+pred_truth_test <- tibble::enframe(housing_pred, name = NULL, value = "predicted") %>% 
+  bind_cols(test_data %>% dplyr::select(SalePrice)) %>% 
+  mutate(err = SalePrice - predicted)
+
+plot_var_imp <- function(mdl) {
+  mdl %>% tidy() %>% filter(term != "(Intercept)") %>% mutate(sign = as.factor(sign(statistic)), imp = abs(statistic)) %>% 
+  top_n(n = 15, wt = imp) %>% 
+  ggplot(aes(x = reorder(term, imp), y = statistic, fill = sign)) + geom_col() + coord_flip() +
+  scale_fill_discrete() + guides(fill = FALSE) +
+  labs(x = "Variable", y = "t-Statistik")
+}
+```
+
 Der wichtigste Test für das Modell ist aber, ob es Verallgemeinern kann, d.h. ob es auf zuvor nicht gesehenen Daten gute Vorhersagen liefert. Dem trainierten Modell werden dazu die zuvor dem Modell unbekannten Testdaten übergeben und das Modell berechnet einen Schätzwert für die Zielvariable. Allerdings kann man dem Modell die Testdaten nicht einfach in der Form übergeben, in der die Daten vorlagen: Stattdessen muss man die Vorverarbeitungsschritte, die man für den Trainingsdatensatz durchgeführt hat, auch für die Testdaten anwenden. Insbesondere müssen auch im Testdatensatz die Variablen zentriert und skaliert werden, weil dies für den Trainingsdatensatz auch durchgeführt wurde: Für die Vorverarbeitung des Testdatensatzes werden also die Mittelwerte und Standardabweichungen der entsprechenden Variablen des Trainingsdatensatzes benötigt. Ohne die Verwendung der Methoden aus dem `tidymodels`-Paket, müssten wir uns diese Parameter an geeigneter Stelle merken und anwenden. Dieser Schritt wird uns von den `tidymodels`-Methoden abgenommen, so dass wir für das Testen des Modells einfach schreiben können:
-```{r predict_housing, exercise = TRUE}
+
+```{r predict_housing, eval = FALSE}
 test_prepped <- prepared_recipe %>% bake(new_data = test_data)
 
 housing_pred <- predict(the_model, test_prepped)
 ```
 
 Die Vorhersagegüte auf Testdaten bestimmen wir einmal anhand von Metriken und auch graphisch:
-```{r preview_predictions, exercise = TRUE}
+```{r preview_predictions, eval = FALSE}
 
 pred_truth_test <- tibble::enframe(housing_pred, name = NULL, value = "predicted") %>% 
   bind_cols(test_data %>% dplyr::select(SalePrice)) %>% 
@@ -811,7 +1016,7 @@ pred_truth_test %>% ggplot(aes(x = SalePrice, y = predicted)) + geom_point() + g
 ```
 
 Die Verteilung der Fehler der Testdaten können wir uns im Vergleich zu den Trainingsdaten ansehen:
-```{r density_test_errors_vs_training, exercise = TRUE}
+```{r density_test_errors_vs_training, eval = FALSE}
 
 ggplot(mapping = aes(x = err)) + geom_density(data = residuals, color = "green") + geom_density(data = pred_truth_test, color = "red") 
 
@@ -826,14 +1031,14 @@ Wenn wir dem Management die Aussage präsentieren, dass unser Modell einen $R^2$
 Eine Möglichkeit, diese Frage zu beantworten, besteht darin, die Wichtigkeit von Variablen zu messen.
 Für valide lineare Modelle gibt der Betrag des $t$-Werts, d.h. der Wert des geschätzten Koeffizienten $\hat{\beta}_i$ geteilt durch den zugehörigen Standardfehler, ein Maß für die Wichtigkeit der entsprechenden Variablen an. Der Wert (allerdings mit Vorzeichen) wird im `summary` des linearen Modells angegeben und wir können mit ein paar einfachen Befehlen eine Liste der wichtigsten Variablen erhalten: 
 
-```{r table_var_imp, exercise = FALSE}
+```{r table_var_imp, eval = FALSE}
 summary(the_model) %>% tidy() %>% mutate(varImp = abs(statistic)) %>% arrange(desc(varImp))
 
 ```
 
 Die Wichtigkeit der Variablen wird über den Betrag der $t$-Statistik gemessen. Weiterhin interessant ist aber auch die Richtung, in die eine Variable wirkt: Diese wird über das Vorzeichen des Koeffizienten (und damit auch der $t$-Statistik) bestimmt. Graphisch können wir uns die Wichtigkeit und Richtung der Variablen über ein paar Zeilen `dplyr` und `ggplot2`-Code erzeugen:
 
-```{r var_imp_plot, exercise = FALSE}
+```{r var_imp_plot, eval = FALSE}
 
 plot_var_imp <- function(mdl) {
   mdl %>% tidy() %>% filter(term != "(Intercept)") %>% mutate(sign = as.factor(sign(statistic)), imp = abs(statistic)) %>% 
@@ -846,6 +1051,17 @@ plot_var_imp <- function(mdl) {
 plot_var_imp(the_model)
 ```
 
+Statistisch kann jedem Koeffizienten $\beta_i$ auch ein Konfidenzintervall zugeordnet werden. Das Paket `sjPlot` bietet die Funktion `plot_model`, das für alle (oder eine Auswahl) von Variablen die Schätzwerte $\hat{\beta}_i$ und deren Konfidenzintervalle darstellt:
+
+```{r chart_model_imp, eval = FALSE}
+plot_model(the_model, type = "est", sort.est = TRUE, vline.color = "black")
+
+```
+
+Bei den Variablen, deren Konfidenzintervall die 0 einschließt, können wir nicht sicher sein, dass sie immer zu einer guten Schätzung der Zielvariablen, also des Verkaufspreises, beitragen. Diese Variablen sollten wir daher nicht für ein produktives Modell wählen.
+
+*Anmerkung* Wir sollten eigentlich bei `type` den Wert `std` wählen, damit wir die standardisierten Koeffizienten angezeigt bekommen. Aus ungeklärter Ursache, funktioniert das hier aber nicht.
+
 ## Alternative Modelle
 Anstelle Linearer Regression könnten wir verschiedene andere Modelltypen verwenden: *Entscheidungsbäume*, *Random Forests*, *Gradient Boosting*, *neuronale Netze* usw. Aber angesichts eines schon erreichten Bestimmtheitsmaßes von 0.86 können wir nicht allzu große Verbesserungen erwarten. Und von so einer kleinen Verbesserung wird unsere Entscheidung für oder gegen die Übernahme des Maklerauftrags nicht abhängen. Wir können Verbesserungen eher auf andere Weise erreichen:
 * Können wir ein hinreichend gutes Modell erstellen, dass mit weniger Variablen auskommt? Je weniger Variablen, desto weniger Eingaben benötigt unser Tool und der Prozess läuft schneller und sicherer.
@@ -853,10 +1069,42 @@ Anstelle Linearer Regression könnten wir verschiedene andere Modelltypen verwen
 
 ### Rein numerische Variablen
 
+```{r prep_model_only_num, include = FALSE}
+recipe(SalePrice ~ ., data = training_data) %>% 
+  step_rm(all_nominal()) %>% 
+  step_knnimpute(all_predictors(), neighbors = 3) %>%  
+  step_nzv(all_predictors()) %>% 
+  step_center(all_predictors()) %>%
+  step_scale(all_predictors()) %>% 
+  step_corr(all_predictors(), threshold = 0.8) -> housing_rec_num
+
+if (write_mode) {
+  prepared_recipe_num <- housing_rec_num %>% prep(retain = TRUE)
+  saveRDS(prepared_recipe, file = "lecture/www/prepared_recipe_num.rds")
+} else {
+  prepared_recipe_num <- readRDS(file = paste0(dir_pattern, "prepared_recipe_num.rds"))
+}
+
+train_prepped_num <- prepared_recipe_num %>% juice()
+
+lr_mod_num <- linear_reg(mode = "regression") %>% set_engine("lm")
+
+if (write_mode) {
+  housing_fit_num <- fit(object = lr_mod_num, formula = formula(prepared_recipe_num), data = train_prepped_num)
+  saveRDS(housing_fit_num, file = "lecture/www/housing_fit_num.rds")
+} else {
+  housing_fit_num <- readRDS(file = paste0(dir_pattern, "housing_fit_num.rds"))
+}
+
+the_model_num <- housing_fit_num$fit
+
+```
+
+
 Zunächst probieren wir aus, wie gut ein lineares Regressionsmodell wird, wenn wir uns auf numerische Daten beschränken.
 Wir gehen dazu analog wie oben vor:
 
-```{r create_numerical_recipe, excercise = FALSE}
+```{r create_numerical_recipe, eval = FALSE}
 recipe(SalePrice ~ ., data = training_data) %>% 
   step_rm(all_nominal()) %>% 
   step_knnimpute(all_predictors(), neighbors = 3) %>%  
@@ -868,7 +1116,7 @@ recipe(SalePrice ~ ., data = training_data) %>%
 
 Das Training des Modells ist ebenfalls analog zu oben:
 
-```{r train_numerical_recipe, exercise = FALSE}
+```{r train_numerical_recipe, eval = FALSE}
 prepared_recipe_num <- housing_rec_num %>% prep(retain = TRUE)
 
 train_prepped_num <- prepared_recipe_num %>% juice()
@@ -888,6 +1136,33 @@ Die Modellqualität (gemessen anhand des Bestimmtheitsmaßes) ist also doch deut
 
 ### Modell mit Regularisierung
 
+```{r prep_lasso_model, include = FALSE}
+lasso_mod <- linear_reg(mode = "regression", mixture = 1) %>% set_engine("glmnet") 
+
+if (write_mode) {
+  housing_fit_lasso <- fit(object = lasso_mod, formula = formula(prepared_recipe), data = train_prepped)
+  saveRDS(housing_fit_lasso, file = "lecture/www/housing_fit_lasso.rds")
+} else {
+  housing_fit_lasso <- readRDS(file = paste0(dir_pattern, "housing_fit_lasso.rds"))
+}
+
+the_model_lasso <- housing_fit_lasso$fit
+
+lasso_tab <- tibble(lambda = the_model_lasso$lambda, nonzerovars = the_model_lasso$df)
+
+pred_lasso <- predict.model_fit(housing_fit_lasso, new_data = train_prepped)
+
+pred_lambda_rmse <- pred_lasso %>% 
+  mutate(truth = rep(train_prepped$SalePrice, length(the_model_lasso$lambda)),
+         err = truth - .pred_values,
+         lambda = .pred_lambda) %>% 
+  group_by(lambda) %>% summarise(RMSE = sqrt(mean(err**2)))
+
+scalef <- max(pred_lambda_rmse$RMSE) / max(lasso_tab$nonzerovars)
+
+```
+
+
 Das Beispiel mit nur numerischen Variablen zeigt, dass man durchaus Gestaltungsmöglichkeiten hat, dabei aber evtl. eine Veränderung der Modellqualität in Kauf nehmen muss. Grundsätzlich ist es wünschenswert ein einfaches und gutes Modell zu haben. Ein einfaches Modell ist dabei (zumindest im Fall der linearen Regression) eines mit wenigen Variablen. Die *LASSO*-Methode (s. @Tibshirani2013), wobei LASSO für *Least Absolute Shrinkage and Selection Operator* steht, ist eine scheinbar kleine Erweiterung der linearen Regression, mit der die zwei Teilprobleme Variablenselektion und Modelloptimierung simultan gelöst werden können: *Regularisierung*.
 
 Die Zielfunktion von LASSO lautet 
@@ -895,7 +1170,7 @@ $$ \min_{\beta_0, \beta_1,\ldots,\beta_n} \left(\sum_{j=1}^N \left(y^{(j)} - \le
 Im Vergleich zur Zielfunktion der normalen linearen Regression gibt es also einen zusätzlichen Parameter $\lambda\in\mathrm{R}$ und eine Summe der Absolutwerte der Koeffizienten $\beta_i$. Wichtig ist: $\lambda$ ist ein wählbarer Parameter und keine Variable, die im Lösungsprozess bestimmt wird. Mit dem Parameter $\lambda$ kann man steuern, wie stark die Minimierung der Zielfunktion die Reduktion der Modellkomplexität durch Nullsetzen von einem oder mehreren $\beta_i$ im Vergleich zur Minimierung des quadratischen Fehlerterms anstrebt. Zu den mathematischen Hintergründen empfiehlt sich das auch ansonsten empfehlenswerte Buch @Tibshirani2013.
 
 Für die Anwendung von LASSO in unserem Fall, müssen wir bei der Wahl der Methode ein paar Parameter anpassen:
-```{r setup_lasso_model, exercise = TRUE}
+```{r setup_lasso_model, eval = FALSE}
 
 lasso_mod <- linear_reg(mode = "regression", mixture = 1) %>% set_engine("glmnet") %>% translate()
 
@@ -907,7 +1182,7 @@ the_model_lasso <- housing_fit_lasso$fit
 
 Die zugrunde liegende Implementierung aus dem `glmnet`-Paket bestimmt eine Folge von $\lambda$-Werten und ermittelt für diese die Koeffizienten und weitere Kennwerte. Aus dem Ergebnis können wir entnehmen, wie sich die Zahl der Koeffizienten $\beta_i$ ungleich 0 in Abhängigkeit vom Wert für $\lambda$ ergibt:
 
-```{r lasso_nonzeros, exercise = TRUE}
+```{r lasso_nonzeros, eval = FALSE}
 lasso_tab <- tibble(lambda = the_model_lasso$lambda, nonzerovars = the_model_lasso$df)
 
 lasso_tab %>% ggplot(aes(x = log(lambda), y = nonzerovars)) + geom_line(color = "red")
@@ -916,7 +1191,7 @@ lasso_tab %>% ggplot(aes(x = log(lambda), y = nonzerovars)) + geom_line(color = 
 
 Diese Entwicklung der Zahl genutzter Variablen können wir nun der Qualität des Modells gegenüberstellen. Zuerst wenden wir das Modell auf die Trainingsdaten selbst an, um daraus dann den Trainingsfehler zu bestimmen und ihn anzuzeigen.
 
-```{r}
+```{r chart_lasso_rmse_lambda, eval = FALSE}
 pred_lasso <- predict.model_fit(housing_fit_lasso, new_data = train_prepped)
 
 pred_lambda_rmse <- pred_lasso %>% 
@@ -926,20 +1201,30 @@ pred_lambda_rmse <- pred_lasso %>%
   group_by(lambda) %>% summarise(RMSE = sqrt(mean(err**2)))
 
 scalef <- max(pred_lambda_rmse$RMSE) / max(lasso_tab$nonzerovars)
-ggplot() + geom_line(data = pred_lambda_rmse, aes(x = log(lambda), y = MSE), color = "blue") +
+ggplot() + geom_line(data = pred_lambda_rmse, aes(x = log(lambda), y = RMSE), color = "blue") +
   geom_line(data = lasso_tab, aes(x = log(lambda), y = scalef * nonzerovars), color = "red") +
   scale_y_continuous("RMSE", sec.axis = sec_axis(~ ./scalef, name = "# Variablen"))
 
 ```
 
+Wenn wir das Modell für einen speziellen $\lambda$-Wert haben wollen, müssen wir die entsprechenden Strukturen aus dem Modellobjekt entnehmen:
+```{r}
+my_lambda = exp(9)
+one_mod <- coef(housing_fit_lasso$fit, s = my_lambda)
+
+non_zero_coeffs <- one_mod[which(one_mod[, 1] != 0),] 
+
+(non_zero_coeffs %>% enframe(name = "Variable", value = "Koeffizient"))
+
+```
+
+Aus der Graphik oben sehen wir, dass unser Modell mit `r nrow(non_zero_coeffs) - 1` Variablen einen RMSE von ca. 40.000 verglichen mit ca. 30.500 des linearen Modells auf den Trainingsdaten hat. Dafür verwendete das Modell `r length(which(the_model$coefficients != 0))` Variablen. 
 
 
 
 
 
-
-
-```{r partial_dependence_plot, exercise = FALSE}
+```{r partial_dependence_plot, eval = FALSE}
 partial(the_model, train = train_prepped, pred.var = "Garage.Area", ice = TRUE) %>% plotPartial(center = TRUE)
 
 
