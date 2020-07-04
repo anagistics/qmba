@@ -26,6 +26,14 @@ div.task {
   border-radius: 5px;
 }
 
+div.check {
+  padding: 1em;
+  background: palegreen;
+  color: black;
+  border: 1px solid darkgreen;
+  border-radius: 5px;
+}
+
 div.center {
   text-align: center;
 }
@@ -40,7 +48,7 @@ write_mode <- FALSE
 if (!write_mode) {
   dir_pattern <- "www/"
 } else {
-  dir_pattern <- "lecture/www/"
+  dir_pattern <- "www/"
 }
 
 
@@ -64,6 +72,10 @@ suppressPackageStartupMessages({
 library(AmesHousing)
 raw <- ames_raw
 names(raw) <- make.names(names(raw))
+
+frage <- purrr::partial(learnr::question, submit_button = "antworten", try_again_button = "nochmal versuchen", allow_retry = TRUE, correct = "Richtig!", incorrect = "Leider falsch!",
+                        random_answer_order = TRUE)
+
 
 ```
 
@@ -136,6 +148,7 @@ Sie haben jetzt also den Auftrag erhalten, die oben beschriebene Anwendung auf d
 </div>
 
 Um ein umfangreiches Verständnis für den Auftrag zu erhalten, sollten Sie die folgenden Punkte mit Ihrem Team besprechen und dokumentieren:
+
 * Wer werden die Anwenderin/der Anwender sein? Wie interagieren diese mit der Applikation? Was erwarten sie?
 * Welche Daten werden benötigt? Welchen Lebenszyklus der Daten erwarten Sie, d.h. wie oft ändern sich Daten? Werden Daten entfernt? Wann?
 * Werden Sie personenbezogene Daten im Sinne der DSGVO verarbeiten?
@@ -153,22 +166,20 @@ Zeitvorgabe: 15 Min, danach Vorstellung nach Zufallsprinzip.
 Es gibt sehr viele verschiedene statische Modelle und Methoden des maschinellen Lernens. Wie lässt sich das angestrebte Modell in diesem Szenario einordnen? 
 
 ```{r qregr, echo=FALSE}
-question("Denken Sie an die Ihnen bekannten Typen von Problemstellungen des maschinellen Lernens. Bei der Problemstellung der Immobilienpreisvorhersage handelt es sich um",
+frage("Denken Sie an die Ihnen bekannten Typen von Problemstellungen des maschinellen Lernens. Bei der Problemstellung der Immobilienpreisvorhersage handelt es sich um",
   answer("ein Regressionsproblem.", correct = TRUE),
   answer("ein Klassifikationsproblem."),
   answer("ein Clusterungsproblem."),
-  answer("ein Zeitreihenprognoseproblem."),
-  allow_retry = TRUE
+  answer("ein Zeitreihenprognoseproblem.")
 )
 ```
 
 ```{r qclass, echo=FALSE}
-question("Angenommen, das Ergebnis der Software wäre eine Empfehlung zur Annahme oder Ablehnung des Maklerauftrags. Um was für eine Art von Problemstellung würde es dann gehen?",
+frage("Angenommen, das Ergebnis der Software wäre eine Empfehlung zur Annahme oder Ablehnung des Maklerauftrags. Um was für eine Art von Problemstellung würde es dann gehen?",
   answer("Ein Regressionsproblem."),
   answer("Ein Klassifikationsproblem.", correct = TRUE),
   answer("Ein Clusterungsproblem."),
-  answer("Ein Zeitreihenprognoseproblem."),
-  allow_retry = TRUE
+  answer("Ein Zeitreihenprognoseproblem.")
 )
 ```
 
@@ -228,20 +239,35 @@ Aus dieser Übersicht erfahren wir schon eine ganze Menge:
 * die Datentypen der Merkmale
 * eine Vorschau auf die Merksmalsausprägungen.
 
-    **Aufgabe**
-    Was bedeuten die Ausprägungen *NA* für die Variable *Alley*. 
-
-
-    **Aufgabe**
-    Was bedeutet die Typkennzeichnung `fct` in der Ausgabe von `glimpse`? Was unterscheidet eine *kategoriale* Variable von numerischen? Was wäre der Unterschied, wenn die Variable *Heating* als Zeichenkette (`char` bzw. `character`) abgebildet würde?
-    
-### Erstes Verständnis der Daten
-
-Mit `glimpse` konnten wir einen ersten Eindruck der Daten gewinnen. Die zahlreichen Einzelwerte bieten aber noch keinen guten Überblick. Dafür ist eine stärker aggregierte Darstellung besser geeignet. Das Paket `dlookr` hilft dabei. Angewandt auf unsere Immobiliendaten erhalten wir:
-```{r diagnose_all, exercise = TRUE}
-diagnose(raw)
+```{r q_na}
+frage("Was bedeuten die Angaben 'NA' bei einigen Variablen?",
+      answer("Nord-America"),
+      answer("Not available", correct = TRUE),
+      answer("Not alphanumeric")
+)
 ```
 
+<div class="task">
+<div class="center">
+**Verständnischeck**
+</div>
+* Was versteht man unter *kategorialen* Variablen? 
+* Was ist der Unterschied zwischen *ordinalen* und *nominalen* Variablen? Kennen Sie Beispiele für beide Typen?
+* Was sind *metrische* Variablen? 
+* Wie würden Sie Datumwerte einordnen? Was unterscheidet diese von z.B. Preisen?
+</div>
+
+### Erstes Verständnis der Daten
+
+Mit `glimpse` konnten wir einen ersten Eindruck der Daten gewinnen. Die zahlreichen Einzelwerte bieten aber noch keinen guten Überblick. Dafür ist eine stärker aggregierte Darstellung besser geeignet. Das Paket `dlookr` (auch bereits geladen) hilft dabei. Angewandt auf unsere Immobiliendaten erhalten wir:
+```{r diagnose_all, exercise = TRUE}
+# Wenden Sie die Funktion `diagnose` auf die Daten an.
+
+```
+
+```{r diagnose_all-solution}
+diagnose(raw)
+```
         **Aufgabe**
         * Was können Sie aus der *unique_rate* von 1 für *PID* ableiten? 
         * Was sagt Ihnen die *unique_rate* von 16 für die Variable *MS.SubClass*?
@@ -250,19 +276,24 @@ diagnose(raw)
 
 Wir können zu numerischen Werten mittels der Funktion `diagnose_numeric` mehr Informationen zu den Variablen erhalten, denen ein numerischer Datentyp zu Grunde liegt:
 
-```{r diagnose_num, exercise = TRUE}
+```{r diagnose_num}
 diagnose_numeric(raw)
 ```
 
 #### Zusammenfassung kategorialer Daten
 
 Für kategoriale Variablen lassen sich keine sinnvollen Quantile und auch kein Mittelwert angeben. Hier sieht die Zusammenfassung für die Variable *MS.Zoning* folgendermaßen aus:
-```{r diagnose_cat, exercise = TRUE}
+```{r diagnose_cat}
 diagnose_category(raw, MS.Zoning)
 ```
 
 *R* bietet übrigens standardmäßig, d.h. ohne weitere Pakete zu laden, die Funktion `summary`, die eine kompakte Übersicht über einen Datensatz bietet:
 ```{r summary, exercise = TRUE}
+# Rufen Sie ein `summary` des Datensatzes auf.
+
+```
+
+```{r summary-solution}
 summary(raw)
 ```
 
@@ -280,8 +311,15 @@ diagnose(raw)
 
 Die Spalte *missing_percent* gibt den Anteil fehlender Werte an und wir können die Spalten mit häufig fehlenden Werten über eine Sortierung erkennen:
 ```{r diagnose_missing, exercise = TRUE}
+# `diagnose(data) %>% arrange(desc(var))` würde die 
+# Tabelle `data` absteigend nach der Variable `var´ sortieren.
+# Gehen Sie analog vor, um die Tabelle `raw` wie gewünscht zu sortieren.
+
+```
+```{r diagnose_missing-solution}
 diagnose(raw) %>% arrange(desc(missing_percent))
 ```
+
 
 Deutlich wird, dass die Variable *Pool.QC* wohl häufig keine Werte enthält. Eine Vermutung wäre, dass diese Variable etwas mit dem Vorhandensein eines Pools zu tun hat und dass fehlende Werte schlichtweg bedeuten, dass die Immobilie keinen Pool hat. Etwas anders sieht es bei der Variable *Bsmt.Cond* aus. Diese fehlt in knapp 3% aller Fälle -- ebenso wie andere Variablen mit ähnlichem Namen. Vielleicht ist es hier ähnlich wie bei der Variablen *Pool.QC* und nicht vorhandene Werte bedeuten einen fehlenden Keller. Aber kann es sein, dass bei ca. 3% aller Immobilien kein Keller vorhanden ist? Um dies besser zu verstehen, müsste man mehr über die Bauweise in der Region in Erfahrung bringen: Vielleicht wurden früher bei der Erfassung der Immobiliendaten keine Angaben zum Keller aufgenommen und die Daten fehlen schlichtweg für ältere Immobilien?
 
@@ -884,7 +922,7 @@ summary(the_model)
 ```{r prep_model_eval, include = FALSE}
 if (write_mode) {
   prepared_recipe <- housing_rec %>% prep(retain = TRUE)
-  saveRDS(prepared_recipe, file = "lecture/www/prepared_recipe.rds")
+  saveRDS(prepared_recipe, file = paste0(dir_pattern, "prepared_recipe.rds"))
 } else {
   prepared_recipe <- readRDS(file = paste0(dir_pattern, "prepared_recipe.rds"))
 }
@@ -892,7 +930,7 @@ train_prepped <- prepared_recipe %>% juice()
 lr_mod <- linear_reg(mode = "regression") %>% set_engine("lm")
 if (write_mode) {
   housing_fit <- fit(object = lr_mod, formula = formula(prepared_recipe), data = train_prepped)
-  saveRDS(housing_fit, file = "lecture/www/housing_fit.rds")
+  saveRDS(housing_fit, file = paste0(dir_pattern, "housing_fit.rds"))
 } else {
   housing_fit <- readRDS(file = paste0(dir_pattern, "housing_fit.rds"))
 }
@@ -975,7 +1013,7 @@ Für den Moment belassen wir es aber dabei. Zukünftige Versionen dieses Tutoria
 ```{r prep_test_mode, include = FALSE}
 if (write_mode) {
   test_prepped <- prepared_recipe %>% bake(new_data = test_data)
-  saveRDS(test_prepped, file = "lecture/www/test_prepped.rds")
+  saveRDS(test_prepped, file = paste0(dir_pattern, "test_prepped.rds"))
 } else {
   test_prepped <- readRDS(file = paste0(dir_pattern, "test_prepped.rds"))
 }
@@ -1080,7 +1118,7 @@ recipe(SalePrice ~ ., data = training_data) %>%
 
 if (write_mode) {
   prepared_recipe_num <- housing_rec_num %>% prep(retain = TRUE)
-  saveRDS(prepared_recipe, file = "lecture/www/prepared_recipe_num.rds")
+  saveRDS(prepared_recipe, file = paste0(dir_pattern, "prepared_recipe_num.rds"))
 } else {
   prepared_recipe_num <- readRDS(file = paste0(dir_pattern, "prepared_recipe_num.rds"))
 }
@@ -1091,7 +1129,7 @@ lr_mod_num <- linear_reg(mode = "regression") %>% set_engine("lm")
 
 if (write_mode) {
   housing_fit_num <- fit(object = lr_mod_num, formula = formula(prepared_recipe_num), data = train_prepped_num)
-  saveRDS(housing_fit_num, file = "lecture/www/housing_fit_num.rds")
+  saveRDS(housing_fit_num, file = paste0(dir_pattern, "housing_fit_num.rds"))
 } else {
   housing_fit_num <- readRDS(file = paste0(dir_pattern, "housing_fit_num.rds"))
 }
@@ -1141,7 +1179,7 @@ lasso_mod <- linear_reg(mode = "regression", mixture = 1) %>% set_engine("glmnet
 
 if (write_mode) {
   housing_fit_lasso <- fit(object = lasso_mod, formula = formula(prepared_recipe), data = train_prepped)
-  saveRDS(housing_fit_lasso, file = "lecture/www/housing_fit_lasso.rds")
+  saveRDS(housing_fit_lasso, file = paste0(dir_pattern, "/housing_fit_lasso.rds"))
 } else {
   housing_fit_lasso <- readRDS(file = paste0(dir_pattern, "housing_fit_lasso.rds"))
 }
@@ -1221,19 +1259,12 @@ non_zero_coeffs <- one_mod[which(one_mod[, 1] != 0),]
 Aus der Graphik oben sehen wir, dass unser Modell mit `r nrow(non_zero_coeffs) - 1` Variablen einen RMSE von ca. 40.000 verglichen mit ca. 30.500 des linearen Modells auf den Trainingsdaten hat. Dafür verwendete das Modell `r length(which(the_model$coefficients != 0))` Variablen. 
 
 
+## Schlussbemerkung
 
+Damit endet dieses Tutorial. Wir haben einige wichtige Themen der Modellentwicklung und -evaluierung behandelt. Die meisten dieser Themen sind für andere Methoden in ähnlicher Weise durchzuführen. Erfahrungsgemäß wird die Qualität von Modellen durch eine sorgfältige Vorarbeit und Modellvalidierung sehr viel besser als durch den (alleinigen) Wechselzu einem (vermeintlich) mächtigeren Modelltyp.
 
+Durch Ihre Rückmeldung wird dieses Tutorial in Zukunft Schritt für Schritt besser. Rückmeldung daher bitte an $\texttt{\href{mailto:://andreas@cardeneo.de}}$.
 
-```{r partial_dependence_plot, eval = FALSE}
-partial(the_model, train = train_prepped, pred.var = "Garage.Area", ice = TRUE) %>% plotPartial(center = TRUE)
-
-
-```
-
-
-
-### Erklärbarkeit für andere Modelltypen
-@Greenwell2018
 
 
 
@@ -1242,10 +1273,6 @@ partial(the_model, train = train_prepped, pred.var = "Garage.Area", ice = TRUE) 
 sessionInfo()
 ```
 
-
-* [Data Doku](http://jse.amstat.org/v19n3/decock/DataDocumentation.txt)
-* [GeoLokationen im Artikel](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)
-* [Beispielanalyse](http://rstudio-pubs-static.s3.amazonaws.com/247652_bb5c001d6f7642d88f9ff66ecf1e28a3.html)
 
 
 
