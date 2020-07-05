@@ -1269,7 +1269,7 @@ summary(the_model) %>% tidy() %>% mutate(varImp = abs(statistic)) %>% arrange(de
 
 Die Wichtigkeit der Variablen wird über den Betrag der $t$-Statistik gemessen. Weiterhin interessant ist aber auch die Richtung, in die eine Variable wirkt: Diese wird über das Vorzeichen des Koeffizienten (und damit auch der $t$-Statistik) bestimmt. Graphisch können wir uns die Wichtigkeit und Richtung der Variablen über ein paar Zeilen `dplyr` und `ggplot2`-Code erzeugen:
 
-```{r var_imp_plot, eval = FALSE}
+```{r var_imp_plot_func, eval = FALSE}
 plot_var_imp <- function(mdl) {
   mdl %>% tidy() %>% filter(term != "(Intercept)") %>% mutate(sign = as.factor(sign(statistic)), imp = abs(statistic)) %>% 
   top_n(n = 15, wt = imp) %>% 
