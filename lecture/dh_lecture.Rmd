@@ -41,7 +41,7 @@ div.center {
 
 ```{r setup, include = FALSE}
 library(learnr)
-tutorial_options(exercise.timelimit = 60)
+tutorial_options(exercise.timelimit = 60, exercise.cap = "Aufgabe")
 
 #write_mode <- TRUE
 write_mode <- FALSE
@@ -247,7 +247,7 @@ frage("Was bedeuten die Angaben 'NA' bei einigen Variablen?",
 )
 ```
 
-<div class="task">
+<div class="check">
 <div class="center">
 **Verständnischeck**
 </div>
@@ -341,12 +341,19 @@ missing_cols <- diagnose(raw) %>% filter(missing_percent > 0.0) %>% pull(variabl
 
 raw %>% select_at(vars(all_of(missing_cols))) %>% aggr(combined = TRUE, sortVars = TRUE, cex.axis = 0.5)
 ```
+<div class="check">
+<div class="center">
+**Verständnischeck**
+</div>
+* Wir haben jetzt schon mehrfach den `%>%`-Operator gesehen. Was bedeutet dieser?
+* Mit diesem Wissen: Was passiert in der ersten Zeile des vorherigen Codeblocks?
+</div>
 
 Die für diese Untersuchung gewählte Beschränkung auf Variablen, die fehlende Werte aufweisen, birgt allerdings ein Problem: Auf diese Weise entgehen uns Zusammenhänge zwischen fehlenden Werten und anderen Variablen, die möglicherweise auf einen systematischen Zusammenhang schließen lassen. Vielleicht fehlen ja die Angaben zu Kellern für Gebäude bestimmter Jahrgänge oder aus bestimmten Gebieten, deren geologischen Eigenschaften keinen Kellerbau zulassen?
 
 Gehen wir einem konkreten Verdacht nach, dass fehlende Werte für die *Bsmt*-Variablen mit der Lage der Immobilie zu tun haben. Hierfür können wir die Variable *Neighborhood* und die Variable *Bsmt.Cond* verwenden:
 
-```{r missings_nhood, exercise = TRUE}
+```{r missings_nhood}
 raw %>% select(Neighborhood, Bsmt.Cond) %>% 
     mutate(has_basement = !is.na(Bsmt.Cond)) %>% 
     count(Neighborhood, has_basement) %>% 
@@ -381,10 +388,18 @@ Bei fehlenden Werten nach MAR würde das Löschen von Instanzen allerdings zu st
 
 In der Praxis, gerade bei der Verwendung von Daten aus operativen IT-Systemen, wird das Fehlen von Werten oftmals durch besondere Ausprägungen codiert. Ein Grund dafür ist, dass die Benutzeroberfläche der IT-Systeme Eingaben in den entsprechenden Feldern erwartet, die der oder die SachbearbeiterIn im Moment der Eingabe nicht leisten kann. In numerischen Feldern wird dann gerne ein Wert wie 99 oder 999 eingetragen, in Textfeldern wird ein Leerzeichen "⍽", ein "-" oder "." eingetragen. 
 
+<div class="check">
+<div class="center">
+**Verständnischeck**
+</div>
+In der Finanzbranche sind BI- und Analysesysteme von *SAS* recht verbreitet. 
+* Wie werden in SAS fehlender Werte gekennzeichnet? Welche Besonderheit bietet *SAS*?
+</div>
+
 #### Umgang mit fehlenden Werten
 
 Wie auch in @Sauer2019 dargestellt wird, ist der richtige Umgang mit fehlenden Werten ein komplexes Thema. Simple Lösungen bestehen darin, die fehlenden Werte durch den Mittelwert der (numerischen) Ausprägungen der Variable zu ersetzen. Bei kategorialen Variablen kann man analog dazu den Modalwert, d.h. die häufigste Ausprägung, als Ersatzwert verwenden. Aber beide Vorgehen sind stark vereinfachend und können zu unrealistischen Merkmalskombinationen für die betroffenen Beobachtungen führen. Technisch kann so eine Ersetzung in R so umgesetzt werden:
-```{r tidyr_mean_imputation, exercise = TRUE}
+```{r tidyr_mean_imputation}
 completed <- raw %>% mutate_if(is.numeric, ~ replace_na(., mean(., na.rm = TRUE)))
 ```
 
@@ -392,35 +407,74 @@ Die Funktion `replace_na` aus dem `tidyr`-Paket ersetzt *NA*-Werte durch den im 
 
 Um andere Imputationsstrategien kennenzulernen, wechseln wir zeitweise zu einem anderen Datensatz:
 ```{r whiteside_glimpse, exercise = TRUE}
+# Verwenden Sie erneut `glimplse`, um sich einen Überblick über den Datensatz `whiteside` zu verschaffen.
 glimpse(whiteside)
 ```
+
+```{r whiteside_glimpse-solution}
+glimpse(whiteside)
+```
+
 
 Der Datensatz passt zum Immobilienszenario, weil er den Zusammenhang zwischen Gasverbrauch, Außentemperatur und Gebäudeisolierung zeigt.
 
 ```{r whiteside_functional, exercise = TRUE}
-ggplot(whiteside, aes(x = Temp, y = Gas)) + geom_point() + 
-    geom_smooth(method = "lm") + 
-    facet_wrap(~ Insul)
+# Erstellen Sie zwei Plots, bei denen Sie jeweils den Gasverbrauch über der 
+# Temperatur abtragen und eine Trendgerade zeichnen. Der erste Plot ist 
+# für Gebäude vor der Isolierung, der zweite für Messungen danach.
+# Anleitung: Ersetzen Sie im Code unten die 'X' durch
+# geeignete Variablenbezeichner.
+ggplot(whiteside, aes(x = X, y = X)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  facet_wrap(~ X)
+```
+```{r whiteside_functional-solution}
+ggplot(whiteside, aes(x = Temp, y = Gas)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  facet_wrap(~ Insul)
 ```
 
 Für das Ausprobieren entfernen wir zufällig einen kleinen Teil der Messungen des Gasverbrauchs aus den Daten:
 
-```{r whiteside_remove, exercise = TRUE}
+```{r whiteside_remove}
 set.seed(123)
 
 ws_mod <- whiteside %>% mutate(Gas = if_else(runif(nrow(whiteside)) < 0.15, NA_real_, Gas))
 ```
+
+<div class="check">
+<div class="center">
+**Verständnischeck**
+</div>
+Was bewirkt `set.seed` und warum machen wir das hier?
+</div>
 
 Im folgenden probieren wir aus, was passiert, wenn wir die  Imputationsstrategie *Imputation durch Mittelwert* wählen. Dazu verwenden wir das Paket `mice` (@VanBuuren2011).
 
 Die Imputation durch den Mittelwert für alle numerischen Spalten kann durch folgenden Funktionsaufruf erreicht werden:
 
 ```{r mice_mean, exercise = TRUE} 
+# Nutzen Sie den `%>%`-Operator, um der Funktion `mice` den Datensatz `ws_mod` zu
+# übergeben und setzen Sie die weiteren Parameter dieser Funktion folgendermaßen:
+# method = "mean"
+# m = 1
+# maxit = 1
+# Weisen Sie das Ergebnis der Variablen `imp`zu.
+
+```
+
+```{r mice_mean-solution} 
+imp <- ws_mod %>% mice(method = "mean", m = 1, maxit = 1)
+```
+
+```{r prep_mice_viz_mean_imputation, include = FALSE}
 imp <- ws_mod %>% mice(method = "mean", m = 1, maxit = 1)
 ```
 
 Das Ergebnis der Imputation können wir mit etwas Aufwand visualisieren (das hier geladene Paket `forcats` bietet Funktionen zur Bearbeitung von kategorialen Variablen):
-```{r mice_viz_mean_imputation, exercise = TRUE}
+```{r mice_viz_mean_imputation}
 tmp1 <- imp$imp$Gas %>% 
     transmute(i = as.integer(row.names(.)),
               value = `1`)
@@ -441,11 +495,27 @@ ggplot(tmp2, aes(x = Temp, y = Gas, color = imputed)) +
 Aus fachlichen Gründen können wir davon ausgehen, dass es einen Zusammenhang zwischen Temperatur und Gasverbrauch gibt: Die Trendlinien oben legen das auch nahe.
 
 ```{r mice_lm_imputation, exercise = TRUE}
+# Gehen Sie analog zu oben vor und weisen Sie der Variablen `imp2` das Ergebnis
+# des Funktionsaufrufs von `mice` auf den Daten `ws_mod` zu. Wählen Sie die folgenden
+# weiteren Parameter für `mice`:
+# method = "norm.predict"
+# seed = 1
+# m = 1
+# print = FALSE
+
+```
+
+```{r mice_lm_imputation-solution, exercise = TRUE}
+imp2 <- ws_mod %>% mice(method = "norm.predict", seed = 1, m = 1, print = FALSE)
+```
+
+
+```{r prep_mice_lm_imputation, include = FALSE}
 imp2 <- ws_mod %>% mice(method = "norm.predict", seed = 1, m = 1, print = FALSE)
 ```
 
 Das Ergebnis dieser Imputation können wir auch wieder mit dem obigen Code visualisieren:
-```{r mice_viz_lm_imputation, exercise = TRUE}
+```{r mice_viz_lm_imputation}
 tmp1 <- imp2$imp$Gas %>% 
     transmute(i = as.integer(row.names(.)),
               value = `1`)
@@ -471,9 +541,19 @@ Die obigen Diagnosetabellen bieten konkrete Information und man kann bspw. über
 
 Tatsächlich ist es sehr hilfreich, Daten und ihre Verteilungen zum besseren Verständnis zu visualisieren. Die Ausreißer der Variable *SalePrice* können wir folgendermaßen untersuchen:
 
-```{r plot_outliers, exercise = TRUE}
+```{r plot_outliers}
 plot_outlier(raw, SalePrice)
 ```
+
+Prüfen Sie selbst die Ausreisser für andere Variablen, bspw. *X2nd.Flr.SF* (die Fläche der 2. Etage in Quadratfuß):
+```{r plot_outliers_self, exercise = TRUE}
+
+```
+
+```{r plot_outliers_self-solution}
+plot_outlier(raw, X2nd.Flr.SF)
+```
+
 
 #### Ausreisser behandeln
 
@@ -481,14 +561,25 @@ Wenn man feststellt, dass es sich bei den Ausreissern nicht um Fehler handelt, b
 * *Trimmen*: Beim Trimmen gibt man einen Wert $p\in[0,1]$ vor, bspw. $p = 0.9$, und schließt dann alle Beobachtungen aus, bei denen die betrachtete Variable einen Wert unterhalb des $100\cdot\frac{p}{2}\%$-Perzentils bzw. oberhalb des $100\cdot(1 - \frac{p}{2})\%$-Perzentils hat. Im Beispiel würde man also alle Beobachtungen mit Werten unterhalb des 5%- bzw. oberhalb des 95%-Perzentils entfernen.
 * *Winsorisieren*: Hier gibt man auch einen Wert $p\in[0,1]$ vor, bspw. $p = 0.9$, und setzt dann alle Datenwerte unterhalb des $100\cdot\frac{p}{2}\%$-Perzentils auf den Wert des $100\cdot\frac{p}{2}\%$-Perzentils und analog dazu alle Werte größer als das $100\cdot(1 - \frac{p}{2})\%$-Perzentil auf den Wert des $100\cdot(1 - \frac{p}{2})\%$-Perzentils. Im Beispiel wären die untere bzw. obere Grenze also das 5%- bzw. das 95%-Perzentil.
 
-Beim Winsorisieren verliert man also keine Datensätze, verändert die vorhandenen aber. 
+Beim Winsorisieren verliert man also keine Datensätze, verändert den vorhandenen aber. 
 
 ### Seltene Werte
 
-Wie oben erwähnt, können kategoriale Variablen nicht gut numerisch zusammengefasst werden. Die Verteilung der Merkmalsausprägungen ist hingegen sehr wertvoll, weil schnell die häufigen und seltenen Ausprägungen erfasst werden können. Ein einfaches *Histogramm* lässt sich mit dem Paket `ggplot2` folgendermaßen erstellen:
-```{r example_rare_values, exercise = TRUE}
+Wie oben erwähnt, können kategoriale Variablen nicht gut numerisch zusammengefasst werden. Die Verteilung der Merkmalsausprägungen ist hingegen sehr wertvoll, weil schnell die häufigen und seltenen Ausprägungen erfasst werden können. Ein einfaches *Histogramm* für die Variable *MS.Zoning* lässt sich mit dem Paket `ggplot2` folgendermaßen erstellen:
+```{r example_rare_values}
 raw %>% ggplot(aes(x = MS.Zoning)) + geom_histogram(stat = "count")
 ```
+
+Erstellen Sie selbst analog ein Histogramm für die Variable *Overall.Cond*:
+```{r self_histo, exercise = TRUE}
+```
+
+```{r self_histo-solution}
+raw %>% ggplot(aes(x = Overall.Cond)) + geom_histogram(stat = "count")
+```
+
+
+
 
 ```{r prep_var_type_handling, include = FALSE}
 housing_variable_types <- function(doc_url = "http://jse.amstat.org/v19n3/decock/DataDocumentation.txt") {
@@ -517,10 +608,11 @@ housing_categorials <- function(type_frame) {
 
 categorials <- housing_categorials(type_data)
 
+raw <- raw %>% mutate_at(vars(all_of(categorials)), as.factor) 
 ```
 
 
-Aus Histogrammen können wir ableiten, welche Werte je Variable sehr selten auftreten. Gerade bei der Analyse kategorialer Variablen stellt sich oft heraus, dass einige Ausprägungen sehr selten auftreten. Eine statistische Analyse auf Basis dieser Ausprägungen würde statistisch wertlos sein, da die Anzahl der Beobachtungen pro Ausprägung nicht für statistisch valide Aussagen ausreicht. Daher ist es empfehlenswert und üblich, seltene Ausprägungen zu Gruppen zusammenzufassen und eine neue Dummy-Ausprägung, bspw. *sonstige*, für diese einzuführen.
+Aus Histogrammen können wir ableiten, welche Werte je Variable sehr selten auftreten. Gerade bei der Analyse kategorialer Variablen stellt sich oft heraus, dass einige Ausprägungen sehr selten auftreten. Eine Analyse auf Basis dieser Ausprägungen würde statistisch wertlos sein, da die Anzahl der Beobachtungen pro Ausprägung nicht für statistisch valide Aussagen ausreicht. Daher ist es empfehlenswert und üblich, seltene Ausprägungen zu Gruppen zusammenzufassen und eine neue Dummy-Ausprägung, bspw. *sonstige*, für diese einzuführen.
 
 Im Folgenden untersuchen wir die kategorialen Variablen des *AmesHousing*-Datensatzes. Um eine vollständige Liste der kategorialen Variablen zu erhalten, hilft die [Dokumentation des AmesHousing-Datensatzes](http://jse.amstat.org/v19n3/decock/DataDocumentation.txt). Übrigens finden sich auf der Seite [Gimme Shelter](https://www.gimme-shelter.com/category/term-2/) recht gute Erklärungen einiger (amerikanischen) Fachbegriffe der Immobilienbranche. 
 
@@ -560,14 +652,14 @@ categorials <- housing_categorials(type_data)
 ```
 
 Zunächst modifizieren wir unseren Datensatz so, dass R die kategorialen Variablen erkennt, indem wir die entsprechenden Spalten zu `factors` konvertieren.
-```{r make_factors, exercise = TRUE}
+```{r make_factors, eval = FALSE}
 raw <- raw %>% mutate_at(vars(all_of(categorials)), as.factor) 
 ```
 
 
 Jetzt können wir uns ansehen, wieviele verschiedene Ausprägungen wir für die kategorialen Variablen haben. Nachdem wir schon wissen, dass *PID* eine eindeutige Kennung ist, lassen wir diese Variable aus der Betrachtung heraus. Für die graphische Darstellung bringen wir die Daten mit der `pivot_longer`-Funktion in ein *langes Format* (s. auch @Sauer2019), bei dem die Variablen nicht mehr einzeln in Spalten stehen. Zum besseren Verständis wird die Bildung des langen Datensatzes auf zwei Schritte mit zwischenzeitlicher Ausgabe der Tabelle aufgeteilt.
 
-```{r count_unique_categories, exercise = TRUE} 
+```{r count_unique_categories} 
 categ_freq <- raw %>% select(all_of(categorials)) %>% select(-PID) %>% 
     summarise_all(~ length(unique(.))) 
 
@@ -582,7 +674,7 @@ categ_freq %>%
 ```
 
 Im nächsten Schritt gucken wir uns alle kategorialen Variablen an, die 6 oder mehr verschiedene Ausprägungen haben. Für diese erstellen wir jeweils ein Histogramm der Ausprägungen, um zu sehen, ob es seltene Ausprägungen gibt.
-```{r find_rare_level_factors, exercise = TRUE}
+```{r find_rare_level_factors}
 rel_categs <- categ_freq %>% filter(Werte >= 6) %>% pull(Variable)
 
 categ_levels <- raw %>% select(all_of(rel_categs)) %>% map(~ fct_count(.))
@@ -590,9 +682,11 @@ categ_levels <- raw %>% select(all_of(rel_categs)) %>% map(~ fct_count(.))
 ```
 
 Die Informationen über die Häufigkeit visualisieren wir: Weil alle unsere Plots verschiedene Ausprägungen haben und unterschiedlich viele Ausprägungen, bietet sich der üblich Weg in `ggplot` über `facet_wrap` oder `facet_grid` nicht an. Hier ist das Paket `patchwork` hilfreich, durch das wir eine Liste von Plots automatisch in einer Graphik anordnen können.
-```{r viz_rare_factor_levels, fig.height = 24, exercise = TRUE}
+```{r viz_rare_factor_levels, fig.height = 24}
 plot_level_freq <- function(idx, data) {
-    data[[idx]] %>% ggplot(aes(x = reorder(f, n), y = n)) + geom_col() + coord_flip() + xlab(names(data)[[idx]])
+    data[[idx]] %>% ggplot(aes(x = reorder(f, n), y = n)) + geom_col() + 
+    coord_flip() + 
+    xlab(names(data)[[idx]])
 }
 
 var_cl_plots <- lapply(seq_along(categ_levels), plot_level_freq, categ_levels)
@@ -606,25 +700,28 @@ Weiter unten bei der Datenvorverarbeitung für die Modellierung, werden wir dahe
 ### Fachliche Transformationen
 
 Manchmal ist es sinnvoll, Variablen aus fachlichen Gründen zu transformieren. Hier am Beispiel von Immobilien können wir uns vorstellen, dass der Preis der Immobilie von deren Alter abhängt. Die Variable *Year.Built* erfasst das Baujahr und *Year.Remod.Add* erfasst das Jahr des letzten Umgestaltung. Wir könnten hier zwei neue Variablen einführen, die stattdessen das *Alter* der Immobilie bzw. die Jahre seit der letzten Umgestaltung abbilden. 
+Die Dokumentation des Datensatzes zeigt auch, dass sich bspw. die Gesamtzahl der Badezimmer erst durch das Zusammenführen mehrerer Variablen ergibt. Es könnte sinnvoll sein, auch hierfür eine neue Variable anzulegen.
+
+Wir kommen im Abschnitt *Datenvorverarbeitung* darauf zurück.
 
 ### Informationsbeiträge von Variablen
 
-Nachdem wir uns im vorherigen Abschnitt mit kategorialen Variablen befasst haben, kehren wir hier wieder zurück zu den numerischen Variablen. Wir sollten uns in Erinnerung rufen, das wir letztlich ein Modell für den Verkaufspreis von Immobilien entwickeln wollen. Dahinter steckt die Annahme, dass verschiedene Eigenschaften bzw. Eigenschaftskombinationen von Immobilien Einfluss auf den Preis haben. 
+Nachdem wir uns im vorherigen Abschnitt mit kategorialen Variablen befasst haben, kehren wir hier wieder zurück zu den numerischen Variablen. Wir sollten uns in Erinnerung rufen, dass wir letztlich ein Modell für den Verkaufspreis von Immobilien entwickeln wollen. Dahinter steckt die Annahme, dass verschiedene Eigenschaften bzw. Eigenschaftskombinationen von Immobilien Einfluss auf den Preis haben. 
 
 #### Beitrag einzelner Variablen
 
-Wir können davon ausgehen, dass Eigenschaften, die für alle Immobilien gleich oder zumindest sehr ähnlich sind, auf den Preis keinen Einfluss haben werden. Wenn wir also Variablen identifizieren, die wenig informativ sind, können wir diese von der weiteren Betrachtung ausschließen.
+Wir können davon ausgehen, dass Eigenschaften, die für alle Immobilien gleich oder zumindest sehr ähnlich sind, auf den Preis keinen Einfluss haben werden. Wenn wir also Variablen identifizieren, die für viele oder alle Beobachtungen gleich sind, können wir diese von der weiteren Betrachtung ausschließen.
 
 Wenn wir nur einzelne Variablen betrachten, können wir als Statistik für den Informationsgehalt numerischer Variablen die Varianz der Ausprägungen (Werte) verwenden. Die Spalte *Order* können wir dabei ignorieren, weil sie einfach nur eine Ordnungszahl enthält.
 
 Als ersten Schritt visualisieren wir die Verteilungen (genauer: Dichtefunktionen) der numerischen Variablen. Nachdem wir oben schon die kategorialen Variablen identifiziert haben, können wir die numerischen einfach als Differenz zur vollständigen Variablenmenge ermitteln:
 
-```{r define_numeric_columns, exercise = TRUE}
+```{r define_numeric_columns}
 numeric_cols <- setdiff(names(raw), categorials)
 ```
 
 Für die graphische Darstellung müssen wir den Datensatz wieder in ein *langes Format* bringen, analog dem Vorgehen weiter oben. 
-```{r viz_numeric_column_densities, fig.height=24, exercise = TRUE}
+```{r viz_numeric_column_densities, fig.height=24}
 raw_rs <- raw %>% select_at(all_of(numeric_cols)) %>% select(-Order) %>% 
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Wert") 
 
@@ -640,8 +737,17 @@ plots <- lapply(var_data, plot_density)
 wrap_plots(plots, ncol = 2)
 ```
 
+<div class="check">
+<div class="center">
+**Verständnischeck**
+</div>
+* Was bewirkt `raw_rs %>% group_split(Variable)` in obigem Code?
+* Welchem Konstrukt in Python entspricht `lapply(var_data, plot_density)`?
+</div>
+
+
 Durch die Dichtediagramme können wir schon ahnen, welche Variablen wahrscheinlich eine niedrige Varianz aufweisen. Allerdings kann die Intuition auch täuschen, so dass wir die Varianzen der Variablen auch noch rechnerisch bestimmen:
-```{r compute_variance, exercise = TRUE}
+```{r compute_variance}
 (nvar_var <- raw %>% select_at(all_of(numeric_cols)) %>% select(-Order) %>% 
     summarise_all(~ var(., na.rm = TRUE) ) %>%     
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Varianz") %>% 
@@ -661,12 +767,26 @@ wobei $Cov(X, Y)$ die *Kovarianz* zwischen den Variablen ist. Eine anschauliche 
 
 In R gibt es mehrere Möglichkeiten der Berechnung des Korrelationskoeffizienten nach Pearson, u.a. die Standardfunktion `cor` und die hier verwendete Funktion `correlate` aus dem `corrr`-Paket:
 
+```{r prep_corr_mat, include = FALSE}
+corr_mat <- raw %>% select(Gr.Liv.Area, Lot.Area) %>% correlate()
+```
+
 ```{r example_correlation, exercise = TRUE}
-(corr_mat <- raw %>% select(Gr.Liv.Area, Lot.Area) %>% correlate())
+# Für einen Datensatz `data` mit den Variablen `A` und `B`, können wir die Korrelation durch das Statement
+# data %>% select(A, B) %>% correlate()
+# berechnen.
+# Weisen Sie der Variablen `corr_mat` die Korrelation von `Gr.Liv.Area` und `Lot.Area` aus dem Datensatz `raw` zu.
+# Zeigen Sie die Variable anschließend an.
+corr_mat <- raw %>% select(Gr.Liv.Area, Lot.Area) %>% correlate()
+```
+
+```{r example_correlation-solution}
+corr_mat <- raw %>% select(Gr.Liv.Area, Lot.Area) %>% correlate()
+corr_mat
 ```
 
 Wenn wir die Korrelation zwischen vielen Variablenpaaren auswerten wollen, bietet das Paket `ggcorrplot` schöne Unterstützung:
-```{r viz_correlations, fig.width = 10, exercise = TRUE}
+```{r viz_correlations, fig.width = 10}
 corr_mat <- raw %>% select_at(all_of(numeric_cols)) %>% 
     select(-Order) %>% drop_na() %>% 
     cor()
@@ -683,13 +803,25 @@ Wir können anhand des Diagramms auch schon erkennen, dass es einige (aber nicht
 
 #### Multikollinearität
 
-Allgemein spricht man von *(Multi)Kollinearität*, wenn zwei oder mehrere unabhängige Variablen stark miteinander korreliert sind (s. @Sheather2009). In verschiedenen Methoden, darunter auch linearer Regression, führt Multikollinearität dazu, dass die Bedeutung einzelner Variablen nicht isoliert bewertet werden kann. Es kann sogar passieren, dass die Regressionskoeffizienten das falsche Vorzeichen haben und damit nicht nachvollziehbare Abhängigkeiten suggerieren (s. @Sheather2009 für ein Beispiel). Um zu ermitteln, wie stark Variablen von Multikollinearität betroffen sind, wird der sog. *Variance Inflaction Factor* (VIF) bestimmt. Die Bezeichung kommt daher, dass man zeigen kann (s. @Sheather2009), dass die Varianz der Regressionskoeffizienten einer Variablen mit der Korrelation zu anderen (unabhängigen) Variablen steigt. Da eine große Varianz der Regressionskoeffizienten für ein valides Modell unerwünscht ist, kann man dann entscheiden, Variablen mit großen VIF nicht in das Modell aufzunehmen.  
+Allgemein spricht man von *(Multi)Kollinearität*, wenn zwei oder mehrere unabhängige Variablen stark miteinander korreliert sind (s. @Sheather2009). In verschiedenen Methoden, darunter auch linearer Regression, führt Multikollinearität dazu, dass die Bedeutung einzelner Variablen nicht isoliert bewertet werden kann. Es kann sogar passieren, dass die Regressionskoeffizienten das falsche Vorzeichen haben und damit nicht nachvollziehbare Abhängigkeiten suggerieren (s. @Sheather2009 für ein Beispiel). 
+
+<div class="check">
+<div class="center">
+**Verständnischeck**
+</div>
+Kurz zur Wiederholung: Wir sprechen bei (multipler) linearer Regression über das Modell
+$$ y = \beta_0 + \sum_{i=1}^n \beta_i\cdot x_i + \varepsilon.$$
+* Wenn im obigen Abschnitt von *Regressionskoeffizienten* die Rede ist: Wo finden sich diese im Modell?
+* Entsprechend: Was wird in diesem Zusammenhang als *Variable* bezeichnet?
+</div>
+
+Um zu ermitteln, wie stark Variablen von Multikollinearität betroffen sind, wird der sog. *Variance Inflaction Factor* (VIF) bestimmt. Die Bezeichung kommt daher, dass man zeigen kann (s. @Sheather2009), dass die Varianz der Regressionskoeffizienten einer Variablen mit der Korrelation zu anderen (unabhängigen) Variablen steigt. Da eine große Varianz der Regressionskoeffizienten für ein valides Modell unerwünscht ist, kann man dann entscheiden, Variablen mit großen VIF nicht in das Modell aufzunehmen.  
 
 In R gibt es (natürlich) verschiedene Möglichkeiten, den VIF-Wert zu bestimmen. Hier verwenden wir die `vif`-Funktion aus dem `car`-Paket. 
 Die Funktion erhält als Eingabe ein *lineares Modell* basierend auf einer R *Formel*, die die abhängige Variable zu den unabhängigen in Beziehung setzt. Wir probieren das an dieser Stelle für einige ausgewählte Variablen aus (und orientieren uns dabei an der Graphik zur Korrelation oben).
 Zunächst erstellen wir ein lineares Modell mit dem Verkaufspreis al abhängiger Variable und mehreren unabhängigen.
 
-```{r example_linear_model, exercise = TRUE}
+```{r example_linear_model}
 linmod <- lm(SalePrice ~ Gr.Liv.Area + Wood.Deck.SF + Bedroom.AbvGr + Full.Bath + TotRms.AbvGrd,
              data = raw %>% select_at(all_of(numeric_cols)))
 
@@ -698,13 +830,13 @@ summary(linmod)
 ```
 
 Der Koeffizient für die Variable *Bedroom.AbvGr* ist negativ, was erstmal erstaunlich ist, denn das würde bedeuten, dass der Verkaufspreis mit mehr Schlafzimmern sinkt. Gucken wir uns jetzt die *VIF* an:
-```{r compute_vif, exercise = TRUE}
+```{r compute_vif}
 vif(linmod)
 ```
 
 Der VIF-Wert für eine unabhängige Variable wird über das *Bestimmtheitsmaß* $R^2$ des linearen Regressionsmodells auf den verbleibenden unabhängigen Variablen berechnet: 
 
-```{r lm_for_indep_bedroom, exercise = TRUE}
+```{r lm_for_indep_bedroom}
 bdrm_mod <- lm(formula = Bedroom.AbvGr ~ Gr.Liv.Area + Wood.Deck.SF + Full.Bath + TotRms.AbvGrd, 
                data = raw %>% select_at(all_of(numeric_cols)))
 
@@ -712,24 +844,41 @@ summary(bdrm_mod)
 ```
 
 Der VIF-Wert für die Variable *Bedroom.AbvGr* wird dann berechnet als
+
 $$ VIF(\text{Bedroom.AbvGr}) = \frac{1}{1 - R_{\text{Bedroom.AbvGr}}^2} = \frac{1}{1 - 0.4597} = 1.851.$$
+
 Analog wird der VIF-Wert für die Variable *Gr.Liv.Area* ermittelt:
 
 ```{r lm_for_indep_livarea, exercise = TRUE}
+# Erstellen Sie analog zum letzten Codeblock ein lineares Modell für die Variable `Gr.Liv.Area` 
+# in Abhängigkeit der anderen vier Variablen und weisen Sie es der Variablen `gla_mod' zu.
+# Lassen Sie sich ein `summary` des Modells ausgeben.
+
+```
+
+```{r lm_for_indep_livarea-solution}
 gla_mod <- lm(formula = Gr.Liv.Area ~ Bedroom.AbvGr + Wood.Deck.SF + Full.Bath + TotRms.AbvGrd, 
                data = raw %>% select_at(all_of(numeric_cols)))
 
 summary(gla_mod)
 ```
+
+```{r prep_lm_for_indep_livarea, include = FALSE}
+gla_mod <- lm(formula = Gr.Liv.Area ~ Bedroom.AbvGr + Wood.Deck.SF + Full.Bath + TotRms.AbvGrd, 
+               data = raw %>% select_at(all_of(numeric_cols)))
+
+```
+
+
 $$ VIF(\text{Gr.Liv.Area}) = \frac{1}{1 - R_{\text{Gr.Liv.Area}}^2} = \frac{1}{1 - 0.7205} = 3.578.$$
 
 Die Frage ist nun, ob solche VIF-Werte bedenklich sind. Diese Frage ist nich so einfach zu beantworten. Klar ist, dass der VIF-Wert mindestens 1 beträgt und gegen unendlich gehen kann. Bei einem Bestimmtheitsmaß $R^2$ von 0.64, d.h. einem *Korrelationskoeffizienten* von 0.8 (also schon recht stark korreliert), würde man einen VIF-Wert 
-$$ VIF = \frac{1}{1 - 0.64} = 2.78 $$ erhalten. In der Literatur (u.a. auch in @Sheather2009), wird oft ein VIF von mindestens 5 als kritisch gesehen. Das würde einem (betragsmäßigem) Korrelationskoeffizienten von 
+$$ VIF = \frac{1}{1 - 0.64} = 2.78 $$ erhalten. In der Literatur (u.a. auch in @Sheather2009), wird oft ein VIF von mindestens 5 als kritisch gesehen. Das würde einem (betragsmäßigen) Korrelationskoeffizienten von 
 $$ R = \sqrt{1 - \frac{1}{VIF}} = \sqrt{1 - \frac{1}{5}} = 0.89$$ 
 entsprechen, also knapp 0.9. Wir sehen, der VIF-Wert wächst recht schnell für kleinere Änderungen des Korrelationskoeffizienten und es gibt auch Quellen, z.B. https://statisticalhorizons.com/multicollinearity, die ab einem VIF von 2.5 vorsichtig werden. 
 
 Wie würde das Regressionsmodell aussehen, wenn wir nur die hochkorrelierte Variable *Gr.Liv.Area* verwenden würden?
-```{r example_simple_linear_model, exercise = TRUE}
+```{r example_simple_linear_model}
 gla1_mod <- lm(formula = SalePrice ~ Gr.Liv.Area, 
                data = raw %>% select_at(all_of(numeric_cols)))
 
@@ -738,16 +887,16 @@ summary(gla1_mod)
 
 Und wenn wir die anderen nicht hoch korrelierten Variablen nehmen?
 
-```{r example_three_var_linear_model, exercise = TRUE}
+```{r example_three_var_linear_model}
 lc_mod <- lm(formula = SalePrice ~ Wood.Deck.SF + Bedroom.AbvGr + Full.Bath, 
              data = raw %>% select_at(all_of(numeric_cols)))
 
 summary(lc_mod)
 ```
 
-Also offensichtlich können wir nicht einfach alle hochkorrelierten Variablen einfach entfernen, ohne die Modellqualität (hier gemessen anhand des Bestimmtheitsmaßes) deutlich zu verschlechtern. Der VIF-Wert gibt uns leider nicht an, woher genau die hohe Korrelation stammt, aber aus der obigen Korrelationsmatrix können wir sehen, dass *TotRms.AbvGrd* stark mit den anderen Variablen korreliert ist. Daher prüfen wir ein Modell ohne diese Variable:
+Also offensichtlich können wir nicht einfach alle hochkorrelierten Variablen entfernen, ohne die Modellqualität (hier gemessen anhand des Bestimmtheitsmaßes) deutlich zu verschlechtern. Der VIF-Wert gibt uns leider nicht an, woher genau die hohe Korrelation stammt, aber aus der obigen Korrelationsmatrix können wir sehen, dass *TotRms.AbvGrd* stark mit den anderen Variablen korreliert ist. Daher prüfen wir ein Modell ohne diese Variable:
 
-```{r example_four_var_linear_model, exercise = TRUE}
+```{r example_four_var_linear_model}
 gwbf_mod <- lm(formula = SalePrice ~ Gr.Liv.Area + Wood.Deck.SF + Bedroom.AbvGr + Full.Bath, 
              data = raw %>% select_at(all_of(numeric_cols)))
 
@@ -763,10 +912,10 @@ Damit erreichen wir die Modellqualität des ersten Modells und senken die VIF-We
 Nachdem wir ein besseres Verständnis für die Daten und die Zusammenhänge zwischen den Variablen erhalten haben, können und müssen wir vor der Modellerstellung noch weitere Vorverarbeitungsschritte vornehmen. Tatsächlich kann dieser Schritt nicht ohne Verständnis für das angestrebte Modell durchgeführt werden: Einige Arten von Modellen können bspw. nicht mit fehlenden Werten oder kategorialen Variablen umgehen (beides gilt für lineare und logistische Regression - hier darf man aber nicht das Verfahren an sich mit der Implementierung des Verfahrens verwechseln. Diese kann bspw. automatisch Datensätze mit fehlenden Werten entfernen und dann wirkt das Verfahren nach außen hin so, als könnte es mit fehlenden Werten umgehen). Nachdem man zu Beginn oftmals noch nicht sicher weiß, welche Art von Modell das beste Ergebnis liefert, ist die Datenvorbereitung in der Praxis ein iterativer Prozess. 
 
 Wir werden uns, wie oben auch schon praktiziert, hier mit einem linearen Regressionsmodell beschäftigen. Unser Modell wird also die Form
-$$ \hat{y} = \beta_0 + \sum_{i=1}^n \beta_i\cdot x_i + \varepsilon$$ haben.
+$$ \hat{y} = \hat{\beta}_0 + \sum_{i=1}^n \hat{\beta}_i\cdot x_i + \varepsilon$$ haben.
 Dabei ist $\hat{y}$ die Schätzung für die *Zielvariable* (hier der Verkaufspreis), die $x_i$ sind $n$ unabhängige Variablen (die Prädiktoren) und $\varepsilon$ ist ein Fehlerterm. 
-Gesucht sind die Koeffizienten $\beta_0$ (konstanter Term, *intercept*) und $\beta_i$. Ermittelt werden diese Koeffizienten anhand von $N$ *Trainingsdatensätzen* $(y^{(j)}, x_1^{(j)}, x_2^{(j)},\ldots,x_n^{(j)}), j = 1,\ldots,N$ durch Lösen des Optimierungsproblems 
-$$ \min_{\beta_0, \beta_1,\ldots,\beta_n} \sum_{j=1}^N \left(y^{(j)} - \left(\beta_0 + \sum_{i=1}^n \beta_i\cdot x_i^{(j)}\right)\right)^2. $$
+Gesucht sind die Koeffizienten $\hat{\beta}_0$ (konstanter Term, *intercept*) und $\hat{\beta}_i$. Ermittelt werden diese Koeffizienten anhand von $N$ *Trainingsdatensätzen* $(y^{(j)}, x_1^{(j)}, x_2^{(j)},\ldots,x_n^{(j)}), j = 1,\ldots,N$ durch Lösen des Optimierungsproblems 
+$$ \min_{\hat{\beta}_0, \hat{\beta}_1,\ldots,\hat{\beta}_n} \sum_{j=1}^N \left(y^{(j)} - \left(\hat{\beta}_0 + \sum_{i=1}^n \hat{\beta}_i\cdot x_i^{(j)}\right)\right)^2. $$
 Für dieses Optimierungsproblem kann man geschlossene Ausdrücke für die optimalen Koeffizienten $\beta_0^*, \beta_1^*,\ldots, \beta_n^*$ angeben und die Lösung somit effizient berechnen (s. @Sheather2009).
 
 Für die Datenvorbereitung des Modells werden wir das `recipes`-Paket verwenden. Dieses Paket bietet schon eine Vielzahl typischer Vorbereitungsschritte, die sich einfach zu einer *Pipeline* zusammensetzen lassen. Diese Pipeline kann dann auch einfach wieder auf andere Daten angewandt werden, was die Reproduzierbarkeit und Wiederverwendung erleichtert.
@@ -853,7 +1002,7 @@ housing_rec %>%
 
 ### Codierung kategorialer Variablen
 
-Bei der linearen Regression werden die Variablenausprägungen $x_i$ mit den Koeffizienten $\beta_i$ multiplziert und addiert. Es muss sich daher bei den Ausprägungen um Zahlenwerte handeln - kategoriale Variablen verwenden aber oft alphanumerische Bezeichnungen für die Ausprägungen. Und selbst wenn die Ausprägungen über Zahlen codiert werden, lässt sich mit diesen Zahlen nicht sinnvoll rechnen. Wir benötigen also einen Weg, die Ausprägungen kategorialer Variablen in Rechengrößen umzuwandeln. Dies wird durch verschiedene Formen der *Codierung* geleistet. Es gibt verschiedene Formen der Codierung, die sich hinsichtlich ihrer statistischen Eigenschafen unterscheiden. Gebräuchlich, wenn auch nicht immer die beste Wahl, sind das *one-hot-encoding* und das *dummy-encoding*. Beim one-hot-encoding einer kategorialen Variablen $x_i$ führt man für jede Ausprägung $\ell$ eine neue Variable $x_i^\ell$ ein, die über die Werte 0 und 1 für jede Beobachtung codiert, ob die ursprüngliche Ausprägung $\ell$ war (1) oder nicht (0). Die neuen Variablen sind also Indikatorvariablen für die Ausprägungen. Bei $L$ verschiedenen Ausprägungen erhält man  damit beim one-hot-encoding $L$ neue Variablen, die die ursprüngliche Variable im Modell ersetzen. Allerdings ist diese Codierung redundant, denn es würden $L-1$ binäre Variablen ausreichen, um $L$ verschiedene Ausprägungen zu modellieren: Der Fall, dass alle $L-1$ Variablen den Wert 0 haben wird nämlich beim one-hot-encoding nicht genutzt, weil immer genau eine Variable den Wert 1 hat. Beim dummy-encoding hingegen wählt man eine Referenzausprägung und weist dieser implizit die Codierung durch $L-1$ 0-Werte zu. Dies hat auch den Vorteil, dass die durch one-hot-encoding eingeführte lineare Abhängigkeit zwischen den $L$ Variablen und der (impliziten) Variable für den $\beta_0$-Term (man kann sich eine Variable $x_0=1$ denken) vermieden wird. Bei der dummy-Codierung muss man entscheiden, welche Ausprägung zur Referenzausprägung wird. Im Regressionsmodell entspricht $\beta_0$ dann dem Mittelwert der Referenzausprägung. Es ist daher wichtig eine Ausprägung zur Referenzausprägung zu wählen, die im Datensatz häufig vorkommt - ansonsten ist der Mittelwert nicht valide.    
+Bei der linearen Regression werden die Variablenausprägungen $x_i$ mit den Koeffizienten $\hat{\beta}_i$ multiplziert und addiert. Es muss sich daher bei den Ausprägungen um Zahlenwerte handeln - kategoriale Variablen verwenden aber oft alphanumerische Bezeichnungen für die Ausprägungen. Und selbst wenn die Ausprägungen über Zahlen codiert werden, lässt sich mit diesen Zahlen nicht sinnvoll rechnen. Wir benötigen also einen Weg, die Ausprägungen kategorialer Variablen in Rechengrößen umzuwandeln. Dies wird durch verschiedene Formen der *Codierung* geleistet. Es gibt verschiedene Formen der Codierung, die sich hinsichtlich ihrer statistischen Eigenschafen unterscheiden. Gebräuchlich, wenn auch nicht immer die beste Wahl, sind das *one-hot-encoding* und das *dummy-encoding*. Beim one-hot-encoding einer kategorialen Variablen $x_i$ führt man für jede Ausprägung $\ell$ eine neue Variable $x_i^\ell$ ein, die über die Werte 0 und 1 für jede Beobachtung codiert, ob die ursprüngliche Ausprägung $\ell$ war (1) oder nicht (0). Die neuen Variablen sind also Indikatorvariablen für die Ausprägungen. Bei $L$ verschiedenen Ausprägungen erhält man  damit beim one-hot-encoding $L$ neue Variablen, die die ursprüngliche Variable im Modell ersetzen. Allerdings ist diese Codierung redundant, denn es würden $L-1$ binäre Variablen ausreichen, um $L$ verschiedene Ausprägungen zu modellieren: Der Fall, dass alle $L-1$ Variablen den Wert 0 haben wird nämlich beim one-hot-encoding nicht genutzt, weil immer genau eine Variable den Wert 1 hat. Beim dummy-encoding hingegen wählt man eine Referenzausprägung und weist dieser implizit die Codierung durch $L-1$ 0-Werte zu. Dies hat auch den Vorteil, dass die durch one-hot-encoding eingeführte lineare Abhängigkeit zwischen den $L$ Variablen und der (impliziten) Variable für den $\hat{\beta}_0$-Term (man kann sich eine Variable $x_0=1$ denken) vermieden wird. Bei der dummy-Codierung muss man entscheiden, welche Ausprägung zur Referenzausprägung wird. Im Regressionsmodell entspricht $\hat{\beta}_0$ dann dem Mittelwert der Referenzausprägung. Es ist daher wichtig eine Ausprägung zur Referenzausprägung zu wählen, die im Datensatz häufig vorkommt - ansonsten ist der Mittelwert nicht valide.    
 
 ```{r recipe_step_dummy_encoding, eval = FALSE}
 housing_rec %>% step_dummy(all_nominal(), one_hot = FALSE) -> housing_rec
@@ -870,9 +1019,9 @@ housing_rec %>%
 
 ### Zentrieren und Skalieren numerischer Variablen
 
-Bei der linearen Regression ist der Erwartungswert der Zielvariable $y$ gleich dem konstanten Term $beta_0$, wenn die Prädiktoren $x_i = 0$ sind. 0 ist aber für viele Anwendungen in der Realität ein außergewöhnlicher Wert, bspw. eine Größe von 0$m$, eine Fläche von 0 $m^2$, eine Zahl von 0 Zimmern usw. Es wäre viel intuitiver, wenn $y = \beta_0$ für den Fall, dass die Prädiktoren ihren jeweiligen Durchschnittswert annehmen. Und genau das kann man erreichen, wenn man die Variablen zentriert, d.h. vom jeweiligen Wert den Durchschnitt abzieht, denn dann haben die (zentrierten) Variablen den Durchschnittswert 0.
+Bei der linearen Regression ist der Erwartungswert der Zielvariable $y$ gleich dem konstanten Term $\hat{\beta}$, wenn die Prädiktoren $x_i = 0$ sind. 0 ist aber für viele Anwendungen in der Realität ein außergewöhnlicher Wert, bspw. eine Größe von 0$m$, eine Fläche von 0 $m^2$, eine Zahl von 0 Zimmern usw. Es wäre viel intuitiver, wenn $y = \hat{\beta}_0$ für den Fall, dass die Prädiktoren ihren jeweiligen Durchschnittswert annehmen. Und genau das kann man erreichen, wenn man die Variablen zentriert, d.h. vom jeweiligen Wert den Durchschnitt abzieht, denn dann haben die (zentrierten) Variablen den Durchschnittswert 0.
 
-Manchmal *skaliert* man die Variablen auch noch zusätzlich zur Zentrierung: Das bedeutet, dass man die Werte auch noch durch die Standardabweichung dividiert. In der Statistik nennt man beide Schritte zusammen *z-Transformation*. Damit sind die Verteilungen der Variablenwerte vergleichbar und die Koeffizienten $\beta_i$ sind damit auch einfacher vergleichbar. Tatsächlich führt man durch den Schritt eine Einheitenumrechnung durch und alle Koeffizienten $\beta_i$ haben dadurch dieselbe Einheit.
+Manchmal *skaliert* man die Variablen auch noch zusätzlich zur Zentrierung: Das bedeutet, dass man die Werte auch noch durch die Standardabweichung dividiert. In der Statistik nennt man beide Schritte zusammen *z-Transformation*. Damit sind die Verteilungen der Variablenwerte vergleichbar und die Koeffizienten $\hat{\beta}a_i$ sind damit auch einfacher vergleichbar. Tatsächlich führt man durch den Schritt eine Einheitenumrechnung durch und alle Koeffizienten $\hat{\beta}_i$ haben dadurch dieselbe Einheit.
 
 ```{r recipe_scale_vars, eval = FALSE}
 housing_rec %>% step_center(all_predictors()) %>%
@@ -1097,7 +1246,7 @@ plot_var_imp <- function(mdl) {
 plot_var_imp(the_model)
 ```
 
-Statistisch kann jedem Koeffizienten $\beta_i$ auch ein Konfidenzintervall zugeordnet werden. Das Paket `sjPlot` bietet die Funktion `plot_model`, das für alle (oder eine Auswahl) von Variablen die Schätzwerte $\hat{\beta}_i$ und deren Konfidenzintervalle darstellt:
+Statistisch kann jedem Koeffizienten $\hat{\beta}_i$ auch ein Konfidenzintervall zugeordnet werden. Das Paket `sjPlot` bietet die Funktion `plot_model`, das für alle (oder eine Auswahl) von Variablen die Schätzwerte $\hat{\beta}_i$ und deren Konfidenzintervalle darstellt:
 
 ```{r chart_model_imp, eval = FALSE}
 plot_model(the_model, type = "est", sort.est = TRUE, vline.color = "black")
