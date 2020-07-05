@@ -1207,7 +1207,7 @@ if (write_mode) {
 
 housing_pred <- predict(the_model, test_prepped)
 
-pred_truth_test <- tibble::enframe(housing_pred, name = NULL, value = "predicted") %>% 
+pred_truth_test <- tibble::enframe(housing_pred, name = NULL, value = "predicted") %>%
   bind_cols(test_data %>% select(SalePrice)) %>% 
   mutate(err = SalePrice - predicted)
 
@@ -1228,20 +1228,26 @@ test_prepped <- prepared_recipe %>% bake(new_data = test_data)
 housing_pred <- predict(the_model, test_prepped)
 ```
 
-Die Vorhersagegüte auf Testdaten bestimmen wir einmal anhand von Metriken und auch graphisch:
+Die Vorhersagegüte auf Testdaten 
 ```{r preview_predictions, eval = FALSE}
-
-pred_truth_test <- tibble::enframe(housing_pred, name = NULL, value = "predicted") %>% 
+pred_truth_test <- tibble::enframe(housing_pred, name = NULL, value = "predicted") %>%
   bind_cols(test_data %>% select(SalePrice)) %>% 
   mutate(err = SalePrice - predicted)
+```
 
+bestimmen wir einmal anhand von Metriken:
+```{r preview_predictions_metrics}
 metrics(pred_truth_test, truth = SalePrice, estimate = predicted)
+```
 
+und auch graphisch:
+
+```{r preview_predictions_chart}
 pred_truth_test %>% ggplot(aes(x = SalePrice, y = predicted)) + geom_point() + geom_smooth(method = "lm")
 ```
 
 Die Verteilung der Fehler der Testdaten können wir uns im Vergleich zu den Trainingsdaten ansehen:
-```{r density_test_errors_vs_training, eval = FALSE}
+```{r density_test_errors_vs_training}
 
 ggplot(mapping = aes(x = err)) + geom_density(data = residuals, color = "green") + geom_density(data = pred_truth_test, color = "red") 
 
@@ -1256,7 +1262,7 @@ Wenn wir dem Management die Aussage präsentieren, dass unser Modell einen $R^2$
 Eine Möglichkeit, diese Frage zu beantworten, besteht darin, die Wichtigkeit von Variablen zu messen.
 Für valide lineare Modelle gibt der Betrag des $t$-Werts, d.h. der Wert des geschätzten Koeffizienten $\hat{\beta}_i$ geteilt durch den zugehörigen Standardfehler, ein Maß für die Wichtigkeit der entsprechenden Variablen an. Der Wert (allerdings mit Vorzeichen) wird im `summary` des linearen Modells angegeben und wir können mit ein paar einfachen Befehlen eine Liste der wichtigsten Variablen erhalten: 
 
-```{r table_var_imp, eval = FALSE}
+```{r table_var_imp}
 summary(the_model) %>% tidy() %>% mutate(varImp = abs(statistic)) %>% arrange(desc(varImp))
 
 ```
@@ -1264,7 +1270,6 @@ summary(the_model) %>% tidy() %>% mutate(varImp = abs(statistic)) %>% arrange(de
 Die Wichtigkeit der Variablen wird über den Betrag der $t$-Statistik gemessen. Weiterhin interessant ist aber auch die Richtung, in die eine Variable wirkt: Diese wird über das Vorzeichen des Koeffizienten (und damit auch der $t$-Statistik) bestimmt. Graphisch können wir uns die Wichtigkeit und Richtung der Variablen über ein paar Zeilen `dplyr` und `ggplot2`-Code erzeugen:
 
 ```{r var_imp_plot, eval = FALSE}
-
 plot_var_imp <- function(mdl) {
   mdl %>% tidy() %>% filter(term != "(Intercept)") %>% mutate(sign = as.factor(sign(statistic)), imp = abs(statistic)) %>% 
   top_n(n = 15, wt = imp) %>% 
@@ -1272,13 +1277,16 @@ plot_var_imp <- function(mdl) {
   scale_fill_discrete() + guides(fill = FALSE) +
   labs(x = "Variable", y = "t-Statistik")
 }
+```
 
+und dann anwenden:
+```{r var_imp_plot}
 plot_var_imp(the_model)
 ```
 
 Statistisch kann jedem Koeffizienten $\hat{\beta}_i$ auch ein Konfidenzintervall zugeordnet werden. Das Paket `sjPlot` bietet die Funktion `plot_model`, das für alle (oder eine Auswahl) von Variablen die Schätzwerte $\hat{\beta}_i$ und deren Konfidenzintervalle darstellt:
 
-```{r chart_model_imp, eval = FALSE}
+```{r chart_model_imp}
 plot_model(the_model, type = "est", sort.est = TRUE, vline.color = "black")
 
 ```
@@ -1351,8 +1359,15 @@ lr_mod_num <- linear_reg(mode = "regression") %>% set_engine("lm")
 housing_fit_num <- fit(object = lr_mod_num, formula = formula(prepared_recipe_num), data = train_prepped_num)
 
 the_model_num <- housing_fit_num$fit
-summary(the_model_num)
+```
 
+Die Ergebnisse können wir uns wieder als `summary`
+```{r train_numerical_recipe_summary}
+summary(the_model_num)
+```
+
+und als Plot unter Wiederverwendung der obigen Funktion ansehen:
+```{r train_numerical_recipe_plot}
 plot_var_imp(the_model_num)
 
 ```
@@ -1450,7 +1465,7 @@ Aus der Graphik oben sehen wir, dass unser Modell mit `r nrow(non_zero_coeffs) -
 
 Damit endet dieses Tutorial. Wir haben einige wichtige Themen der Modellentwicklung und -evaluierung behandelt. Die meisten dieser Themen sind für andere Methoden in ähnlicher Weise durchzuführen. Erfahrungsgemäß wird die Qualität von Modellen durch eine sorgfältige Vorarbeit und Modellvalidierung sehr viel besser als durch den (alleinigen) Wechselzu einem (vermeintlich) mächtigeren Modelltyp.
 
-Durch Ihre Rückmeldung wird dieses Tutorial in Zukunft Schritt für Schritt besser. Rückmeldung daher bitte an [\texttt{andreas@cardeneo.de}](mailto://andreas@cardeneo.de).
+Durch Ihre Rückmeldung wird dieses Tutorial in Zukunft Schritt für Schritt besser. Rückmeldung daher bitte an [andreas@cardeneo.de](mailto://andreas@cardeneo.de).
 
 
 
