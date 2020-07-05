@@ -1118,7 +1118,7 @@ the_model <- housing_fit$fit
 
 Wir können verschiedene Metriken verwenden, um besser die Qualität des Modells (zunächst auf Basis der Trainingsdaten) zu untersuchen. Das Paket `yardstick`, das ebenfalls zu `tidymodels` gehört, bietet hier schon eine gute Auswahl:
 
-```{r model_metrics, eval = FALSE}
+```{r model_metrics}
 pred_truth_train <- tibble(SalePrice = train_prepped$SalePrice, predicted = the_model$fitted.values)
 
 metrics(pred_truth_train, SalePrice, predicted)
@@ -1130,20 +1130,20 @@ $\sqrt{\frac{1}{N}\sum_{j=1}^{N}(y^{(j)}- \hat{y}^{(j)})^2}$, und *mae* für den
 
 Bei linearer Regression empfiehlt es sich, die Ergebnisse graphisch zu veranschaulichen.
 
-```{r viz_predictions, eval = FALSE}
+```{r viz_predictions}
 pred_truth_train %>% ggplot(aes(x = SalePrice, y = predicted)) + geom_point() + geom_smooth(method = "lm")
 ```
 
 Die Vorhersagefehler sollten, entsprechend der Modellannahme, normalverteilt sein:
 
-```{r viz_residual_density, eval = FALSE}
+```{r viz_residual_density}
 residuals <- pred_truth_train %>% mutate(err = SalePrice - predicted)
 residuals %>% ggplot(aes(x = err)) + geom_density()
 ```
 
 Man verwendet häufig den *Q-Q-Plot*, um diese Annahme zu prüfen: Dabei werden die geordneten *standardisierten Fehler* über den erwarteten geordneten Werten der Standardnormalverteilung abgetragen. Zuerst müssen wir daher die standardisierten Fehler (s. @Sheather2009) berechnen:
 
-```{r qqplot_on_std_res, eval = FALSE}
+```{r qqplot_on_std_res}
 std_res <- stdres(the_model)
 
 qqnorm(std_res)
@@ -1152,7 +1152,7 @@ abline(0, 1, col = "red")
 
 Wir sehen, dass die standardisierten Residuen (Fehler) für einen Großteil des Wertebereichs schon sehr gut den Erwartungen, nämlich einer Standardnormalverteilung zu folgen, entsprechen. Aber es gibt auch Ausnahmen und wir prüfen daher die Standardresiduen abgetragen über den Indices der Beobachtungen. Zusätzlich plotten wir in rot den (skalierten) Verkaufspreis.
 
-```{r viz_srdres_over_index, eval = FALSE}
+```{r viz_srdres_over_index}
 idx_stdres <- tibble::enframe(std_res, name = "Index", value = "StdRes") %>% 
   mutate(Index = as.integer(Index)) %>% 
   bind_cols(train_prepped %>% select(SalePrice))
@@ -1172,7 +1172,7 @@ idx_stdres %>%
 
 Das Modell scheint besonders bei höheren Verkaufspreisen auch größere Fehler aufzuweisen, was wir überprüfen:
 
-```{r viz_stdres_over_target, eval = FALSE}
+```{r viz_stdres_over_target}
 idx_stdres %>% 
   ggplot(aes(x = SalePrice, y = StdRes )) +
   geom_point(alpha = 0.3) 
@@ -1286,7 +1286,7 @@ plot_var_imp(the_model)
 
 Statistisch kann jedem Koeffizienten $\hat{\beta}_i$ auch ein Konfidenzintervall zugeordnet werden. Das Paket `sjPlot` bietet die Funktion `plot_model`, das für alle (oder eine Auswahl) von Variablen die Schätzwerte $\hat{\beta}_i$ und deren Konfidenzintervalle darstellt:
 
-```{r chart_model_imp}
+```{r chart_model_imp, fig.height = 15}
 plot_model(the_model, type = "est", sort.est = TRUE, vline.color = "black")
 
 ```
@@ -1454,11 +1454,11 @@ one_mod <- coef(housing_fit_lasso$fit, s = my_lambda)
 
 non_zero_coeffs <- one_mod[which(one_mod[, 1] != 0),] 
 
-(non_zero_coeffs %>% enframe(name = "Variable", value = "Koeffizient"))
+non_zero_coeffs %>% enframe(name = "Variable", value = "Koeffizient")
 
 ```
 
-Aus der Graphik oben sehen wir, dass unser Modell mit `r nrow(non_zero_coeffs) - 1` Variablen einen RMSE von ca. 40.000 verglichen mit ca. 30.500 des linearen Modells auf den Trainingsdaten hat. Dafür verwendete das Modell `r length(which(the_model$coefficients != 0))` Variablen. 
+Aus der Graphik oben sehen wir, dass unser Modell mit `r length(non_zero_coeffs) - 1` Variablen einen RMSE von ca. 40.000 verglichen mit ca. 30.500 des linearen Modells auf den Trainingsdaten hat. Dafür verwendete das Modell `r length(which(the_model$coefficients != 0))` Variablen. 
 
 
 ## Schlussbemerkung
