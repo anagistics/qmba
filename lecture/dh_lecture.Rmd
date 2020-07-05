@@ -1,6 +1,7 @@
 ---
 title: "Vorlesung Data Science Praxis"
-author: "Andreas Cardeneo"
+author: 
+  - Andreas Cardeneo
 date: "`r Sys.Date()`"
 output: learnr::tutorial
 runtime: shiny_prerendered
@@ -28,7 +29,7 @@ div.task {
 
 div.check {
   padding: 1em;
-  background: palegreen;
+  background: darkseagreen;
   color: black;
   border: 1px solid darkgreen;
   border-radius: 5px;
@@ -308,7 +309,7 @@ diagnose(raw)
 ```
 
 Die Spalte *missing_percent* gibt den Anteil fehlender Werte an und wir können die Spalten mit häufig fehlenden Werten über eine Sortierung erkennen:
-```{r diagnose_missing, exercise = TRUE}
+```{r diagnose_missing, exercise = TRUE, exercise.lines = 5}
 # `diagnose(data) %>% arrange(desc(var))` würde die 
 # Tabelle `data` absteigend nach der Variable `var´ sortieren.
 # Gehen Sie analog vor, um die Tabelle `raw` wie gewünscht zu sortieren.
@@ -321,7 +322,7 @@ diagnose(raw) %>% arrange(desc(missing_percent))
 
 Deutlich wird, dass die Variable *Pool.QC* wohl häufig keine Werte enthält. Eine Vermutung wäre, dass diese Variable etwas mit dem Vorhandensein eines Pools zu tun hat und dass fehlende Werte schlichtweg bedeuten, dass die Immobilie keinen Pool hat. Etwas anders sieht es bei der Variable *Bsmt.Cond* aus. Diese fehlt in knapp 3% aller Fälle -- ebenso wie andere Variablen mit ähnlichem Namen. Vielleicht ist es hier ähnlich wie bei der Variablen *Pool.QC* und nicht vorhandene Werte bedeuten einen fehlenden Keller. Aber kann es sein, dass bei ca. 3% aller Immobilien kein Keller vorhanden ist? Um dies besser zu verstehen, müsste man mehr über die Bauweise in der Region in Erfahrung bringen: Vielleicht wurden früher bei der Erfassung der Immobiliendaten keine Angaben zum Keller aufgenommen und die Daten fehlen schlichtweg für ältere Immobilien?
 
-```{r q-miss1}
+```{r q-miss1, echo = FALSE}
 frage("Für welche Variable fehlen ca. 2.8% aller Werte?",
       answer("Bsmt.Exposure", correct = TRUE),
       answer("Mas.Vnr.Area"),
@@ -393,7 +394,9 @@ In der Praxis, gerade bei der Verwendung von Daten aus operativen IT-Systemen, w
 **Verständnischeck**
 </div>
 In der Finanzbranche sind BI- und Analysesysteme von *SAS* recht verbreitet. 
-* Wie werden in SAS fehlender Werte gekennzeichnet? Welche Besonderheit bietet *SAS*?
+
+* Wie werden in SAS fehlender Werte gekennzeichnet? 
+* Welche Besonderheit bietet *SAS*?
 </div>
 
 #### Umgang mit fehlenden Werten
@@ -408,7 +411,7 @@ Die Funktion `replace_na` aus dem `tidyr`-Paket ersetzt *NA*-Werte durch den im 
 Um andere Imputationsstrategien kennenzulernen, wechseln wir zeitweise zu einem anderen Datensatz:
 ```{r whiteside_glimpse, exercise = TRUE}
 # Verwenden Sie erneut `glimplse`, um sich einen Überblick über den Datensatz `whiteside` zu verschaffen.
-glimpse(whiteside)
+
 ```
 
 ```{r whiteside_glimpse-solution}
@@ -455,7 +458,7 @@ Im folgenden probieren wir aus, was passiert, wenn wir die  Imputationsstrategie
 
 Die Imputation durch den Mittelwert für alle numerischen Spalten kann durch folgenden Funktionsaufruf erreicht werden:
 
-```{r mice_mean, exercise = TRUE} 
+```{r mice_mean, exercise = TRUE, exercise.lines = 8} 
 # Nutzen Sie den `%>%`-Operator, um der Funktion `mice` den Datensatz `ws_mod` zu
 # übergeben und setzen Sie die weiteren Parameter dieser Funktion folgendermaßen:
 # method = "mean"
@@ -494,7 +497,7 @@ ggplot(tmp2, aes(x = Temp, y = Gas, color = imputed)) +
 
 Aus fachlichen Gründen können wir davon ausgehen, dass es einen Zusammenhang zwischen Temperatur und Gasverbrauch gibt: Die Trendlinien oben legen das auch nahe.
 
-```{r mice_lm_imputation, exercise = TRUE}
+```{r mice_lm_imputation, exercise = TRUE, exercise.lines = 10}
 # Gehen Sie analog zu oben vor und weisen Sie der Variablen `imp2` das Ergebnis
 # des Funktionsaufrufs von `mice` auf den Daten `ws_mod` zu. Wählen Sie die folgenden
 # weiteren Parameter für `mice`:
@@ -505,7 +508,7 @@ Aus fachlichen Gründen können wir davon ausgehen, dass es einen Zusammenhang z
 
 ```
 
-```{r mice_lm_imputation-solution, exercise = TRUE}
+```{r mice_lm_imputation-solution}
 imp2 <- ws_mod %>% mice(method = "norm.predict", seed = 1, m = 1, print = FALSE)
 ```
 
@@ -572,6 +575,7 @@ raw %>% ggplot(aes(x = MS.Zoning)) + geom_histogram(stat = "count")
 
 Erstellen Sie selbst analog ein Histogramm für die Variable *Overall.Cond*:
 ```{r self_histo, exercise = TRUE}
+
 ```
 
 ```{r self_histo-solution}
@@ -659,13 +663,15 @@ raw <- raw %>% mutate_at(vars(all_of(categorials)), as.factor)
 
 Jetzt können wir uns ansehen, wieviele verschiedene Ausprägungen wir für die kategorialen Variablen haben. Nachdem wir schon wissen, dass *PID* eine eindeutige Kennung ist, lassen wir diese Variable aus der Betrachtung heraus. Für die graphische Darstellung bringen wir die Daten mit der `pivot_longer`-Funktion in ein *langes Format* (s. auch @Sauer2019), bei dem die Variablen nicht mehr einzeln in Spalten stehen. Zum besseren Verständis wird die Bildung des langen Datensatzes auf zwei Schritte mit zwischenzeitlicher Ausgabe der Tabelle aufgeteilt.
 
-```{r count_unique_categories} 
+```{r count_unique_categories, fig.height = 15} 
 categ_freq <- raw %>% select(all_of(categorials)) %>% select(-PID) %>% 
     summarise_all(~ length(unique(.))) 
 
 head(categ_freq)
 
-categ_freq <- categ_freq %>% pivot_longer(cols = everything(), names_to = "Variable", values_to = "Werte")
+categ_freq <- categ_freq %>% 
+  pivot_longer(cols = everything(), names_to = "Variable", 
+               values_to = "Werte")
 
 head(categ_freq)
 
@@ -771,13 +777,13 @@ In R gibt es mehrere Möglichkeiten der Berechnung des Korrelationskoeffizienten
 corr_mat <- raw %>% select(Gr.Liv.Area, Lot.Area) %>% correlate()
 ```
 
-```{r example_correlation, exercise = TRUE}
+```{r example_correlation, exercise = TRUE, exercise.lines = 10}
 # Für einen Datensatz `data` mit den Variablen `A` und `B`, können wir die Korrelation durch das Statement
 # data %>% select(A, B) %>% correlate()
 # berechnen.
 # Weisen Sie der Variablen `corr_mat` die Korrelation von `Gr.Liv.Area` und `Lot.Area` aus dem Datensatz `raw` zu.
 # Zeigen Sie die Variable anschließend an.
-corr_mat <- raw %>% select(Gr.Liv.Area, Lot.Area) %>% correlate()
+
 ```
 
 ```{r example_correlation-solution}
@@ -811,6 +817,7 @@ Allgemein spricht man von *(Multi)Kollinearität*, wenn zwei oder mehrere unabh�
 </div>
 Kurz zur Wiederholung: Wir sprechen bei (multipler) linearer Regression über das Modell
 $$ y = \beta_0 + \sum_{i=1}^n \beta_i\cdot x_i + \varepsilon.$$
+
 * Wenn im obigen Abschnitt von *Regressionskoeffizienten* die Rede ist: Wo finden sich diese im Modell?
 * Entsprechend: Was wird in diesem Zusammenhang als *Variable* bezeichnet?
 </div>
@@ -822,7 +829,8 @@ Die Funktion erhält als Eingabe ein *lineares Modell* basierend auf einer R *Fo
 Zunächst erstellen wir ein lineares Modell mit dem Verkaufspreis al abhängiger Variable und mehreren unabhängigen.
 
 ```{r example_linear_model}
-linmod <- lm(SalePrice ~ Gr.Liv.Area + Wood.Deck.SF + Bedroom.AbvGr + Full.Bath + TotRms.AbvGrd,
+linmod <- lm(SalePrice ~ Gr.Liv.Area + Wood.Deck.SF + Bedroom.AbvGr + 
+               Full.Bath + TotRms.AbvGrd,
              data = raw %>% select_at(all_of(numeric_cols)))
 
 summary(linmod)
@@ -837,7 +845,8 @@ vif(linmod)
 Der VIF-Wert für eine unabhängige Variable wird über das *Bestimmtheitsmaß* $R^2$ des linearen Regressionsmodells auf den verbleibenden unabhängigen Variablen berechnet: 
 
 ```{r lm_for_indep_bedroom}
-bdrm_mod <- lm(formula = Bedroom.AbvGr ~ Gr.Liv.Area + Wood.Deck.SF + Full.Bath + TotRms.AbvGrd, 
+bdrm_mod <- lm(formula = Bedroom.AbvGr ~ Gr.Liv.Area + Wood.Deck.SF + 
+                 Full.Bath + TotRms.AbvGrd, 
                data = raw %>% select_at(all_of(numeric_cols)))
 
 summary(bdrm_mod)
@@ -849,7 +858,7 @@ $$ VIF(\text{Bedroom.AbvGr}) = \frac{1}{1 - R_{\text{Bedroom.AbvGr}}^2} = \frac{
 
 Analog wird der VIF-Wert für die Variable *Gr.Liv.Area* ermittelt:
 
-```{r lm_for_indep_livarea, exercise = TRUE}
+```{r lm_for_indep_livarea, exercise = TRUE, exercise.lines = 10}
 # Erstellen Sie analog zum letzten Codeblock ein lineares Modell für die Variable `Gr.Liv.Area` 
 # in Abhängigkeit der anderen vier Variablen und weisen Sie es der Variablen `gla_mod' zu.
 # Lassen Sie sich ein `summary` des Modells ausgeben.
@@ -975,6 +984,18 @@ training_data <- training(data_split)
 test_data <- testing(data_split)
 ```
 
+```{r q-trng_tst_split, echo = FALSE}
+frage("Indem die Funktion `initial_split` verwendet wird, werden die Daten in 
+      Trainings- und eine Testmenge unterteilt. In welchem Verhältnis?",
+      answer("Das Verhältnis ist zufällig. Deswegen auch der Aufruf von `set.seed`"),
+      answer("Im Verhältnis 1:1, beide Mengen sind danach gleich groß"),
+      answer("Im Verhältnis 80:20 nach dem Pareto-Prinzip"),
+      answer("Im Verhältnis 75:25, d.h. die Trainingsmenge ist 3mal so groß wie die Testmenge", correct = TRUE)
+)
+
+```
+
+
 ### Rezept anlegen
 Das Rezept wird angelegt, indem wir die Zielvariable angeben und pauschal alle anderen Variablen als potentielle Prädiktoren vorsehen. Im weiteren Verlauf werden wir das Rezept durch die Verkettung mit `step_*`-Funktionen weiter spezifizieren. Viele der `step_*`-Funktionen aus dem `recipes`-Paket bieten noch Parameter, um das Verhalten weiter zu beeinflussen. Die Dokumentation zum `recipes`-Paket listet unter https://recipes.tidymodels.org/articles/Ordering.html auch eine empfohlene Reihenfolge der Schritte auf.
 
@@ -1019,9 +1040,9 @@ housing_rec %>%
 
 ### Zentrieren und Skalieren numerischer Variablen
 
-Bei der linearen Regression ist der Erwartungswert der Zielvariable $y$ gleich dem konstanten Term $\hat{\beta}$, wenn die Prädiktoren $x_i = 0$ sind. 0 ist aber für viele Anwendungen in der Realität ein außergewöhnlicher Wert, bspw. eine Größe von 0$m$, eine Fläche von 0 $m^2$, eine Zahl von 0 Zimmern usw. Es wäre viel intuitiver, wenn $y = \hat{\beta}_0$ für den Fall, dass die Prädiktoren ihren jeweiligen Durchschnittswert annehmen. Und genau das kann man erreichen, wenn man die Variablen zentriert, d.h. vom jeweiligen Wert den Durchschnitt abzieht, denn dann haben die (zentrierten) Variablen den Durchschnittswert 0.
+Bei der linearen Regression ist der Erwartungswert der Zielvariable $y$ gleich dem konstanten Term $\hat{\beta}_0$, wenn die Prädiktoren $x_i = 0$ sind. 0 ist aber für viele Anwendungen in der Realität ein außergewöhnlicher Wert, bspw. eine Größe von 0$m$, eine Fläche von 0 $m^2$, eine Zahl von 0 Zimmern usw. Es wäre viel intuitiver, wenn $y = \hat{\beta}_0$ für den Fall, dass die Prädiktoren ihren jeweiligen Durchschnittswert annehmen. Und genau das kann man erreichen, wenn man die Variablen zentriert, d.h. vom jeweiligen Wert den Durchschnitt abzieht, denn dann haben die (zentrierten) Variablen den Durchschnittswert 0.
 
-Manchmal *skaliert* man die Variablen auch noch zusätzlich zur Zentrierung: Das bedeutet, dass man die Werte auch noch durch die Standardabweichung dividiert. In der Statistik nennt man beide Schritte zusammen *z-Transformation*. Damit sind die Verteilungen der Variablenwerte vergleichbar und die Koeffizienten $\hat{\beta}a_i$ sind damit auch einfacher vergleichbar. Tatsächlich führt man durch den Schritt eine Einheitenumrechnung durch und alle Koeffizienten $\hat{\beta}_i$ haben dadurch dieselbe Einheit.
+Manchmal *skaliert* man die Variablen auch noch zusätzlich zur Zentrierung: Das bedeutet, dass man die Werte auch noch durch die Standardabweichung dividiert. In der Statistik nennt man beide Schritte zusammen *z-Transformation*. Damit sind die Verteilungen der Variablenwerte vergleichbar und die Koeffizienten $\hat{\beta}_i$ sind damit auch einfacher vergleichbar. Tatsächlich führt man durch den Schritt eine Einheitenumrechnung durch und alle Koeffizienten $\hat{\beta}_i$ haben dadurch dieselbe Einheit.
 
 ```{r recipe_scale_vars, eval = FALSE}
 housing_rec %>% step_center(all_predictors()) %>%
@@ -1164,6 +1185,15 @@ An dieser Stelle kann man den Prozess der Modellbildung noch fortsetzen:
 
 Für den Moment belassen wir es aber dabei. Zukünftige Versionen dieses Tutorials werden diese Fragen angehen.
 
+<div class="check">
+<div class="center">
+**Verständnischeck**
+</div>
+Wenn wir wissen, dass unser Modell für höhere Verkaufspreise mit höherer Wahrscheinlichkeit zu stark abweichende Vorhersagen liefert: 
+
+* Welchen Einfluss hat das auf unseren Geschäftsprozess? 
+* Wie könnten wir damit umgehen?
+</div>
 
 ### Modell auf Testdaten anwenden
 
@@ -1358,14 +1388,14 @@ scalef <- max(pred_lambda_rmse$RMSE) / max(lasso_tab$nonzerovars)
 ```
 
 
-Das Beispiel mit nur numerischen Variablen zeigt, dass man durchaus Gestaltungsmöglichkeiten hat, dabei aber evtl. eine Veränderung der Modellqualität in Kauf nehmen muss. Grundsätzlich ist es wünschenswert ein einfaches und gutes Modell zu haben. Ein einfaches Modell ist dabei (zumindest im Fall der linearen Regression) eines mit wenigen Variablen. Die *LASSO*-Methode (s. @Tibshirani2013), wobei LASSO für *Least Absolute Shrinkage and Selection Operator* steht, ist eine scheinbar kleine Erweiterung der linearen Regression, mit der die zwei Teilprobleme Variablenselektion und Modelloptimierung simultan gelöst werden können: *Regularisierung*.
+Das Beispiel mit nur numerischen Variablen zeigt, dass man durchaus Gestaltungsmöglichkeiten hat, dabei aber evtl. eine Veränderung der Modellqualität in Kauf nehmen muss. Grundsätzlich ist es wünschenswert ein einfaches und gutes Modell zu haben. Ein einfaches Modell ist dabei (zumindest im Fall der linearen Regression) eines mit wenigen Variablen. Die *LASSO*-Methode (s. @James2013), wobei LASSO für *Least Absolute Shrinkage and Selection Operator* steht, ist eine scheinbar kleine Erweiterung der linearen Regression, mit der die zwei Teilprobleme Variablenselektion und Modelloptimierung simultan gelöst werden können: *Regularisierung*.
 
 Die Zielfunktion von LASSO lautet 
 $$ \min_{\beta_0, \beta_1,\ldots,\beta_n} \left(\sum_{j=1}^N \left(y^{(j)} - \left(\beta_0 + \sum_{i=1}^n \beta_i\cdot x_i^{(j)}\right)\right)^2 + \lambda\cdot\sum_{i=1}^n|\beta_i|\right). $$
-Im Vergleich zur Zielfunktion der normalen linearen Regression gibt es also einen zusätzlichen Parameter $\lambda\in\mathrm{R}$ und eine Summe der Absolutwerte der Koeffizienten $\beta_i$. Wichtig ist: $\lambda$ ist ein wählbarer Parameter und keine Variable, die im Lösungsprozess bestimmt wird. Mit dem Parameter $\lambda$ kann man steuern, wie stark die Minimierung der Zielfunktion die Reduktion der Modellkomplexität durch Nullsetzen von einem oder mehreren $\beta_i$ im Vergleich zur Minimierung des quadratischen Fehlerterms anstrebt. Zu den mathematischen Hintergründen empfiehlt sich das auch ansonsten empfehlenswerte Buch @Tibshirani2013.
+Im Vergleich zur Zielfunktion der normalen linearen Regression gibt es also einen zusätzlichen Parameter $\lambda\in\mathrm{R}$ und eine Summe der Absolutwerte der Koeffizienten $\beta_i$. Wichtig ist: $\lambda$ ist ein wählbarer Parameter und keine Variable, die im Lösungsprozess bestimmt wird. Mit dem Parameter $\lambda$ kann man steuern, wie stark die Minimierung der Zielfunktion die Reduktion der Modellkomplexität durch Nullsetzen von einem oder mehreren $\beta_i$ im Vergleich zur Minimierung des quadratischen Fehlerterms anstrebt. Zu den mathematischen Hintergründen empfiehlt sich das auch ansonsten empfehlenswerte Buch @James2013 (kostenlos erhältlich unter http://faculty.marshall.usc.edu/gareth-james/ISL/).
 
 Für die Anwendung von LASSO in unserem Fall, müssen wir bei der Wahl der Methode ein paar Parameter anpassen:
-```{r setup_lasso_model, eval = FALSE}
+```{r setup_lasso_model}
 
 lasso_mod <- linear_reg(mode = "regression", mixture = 1) %>% set_engine("glmnet") %>% translate()
 
@@ -1377,7 +1407,7 @@ the_model_lasso <- housing_fit_lasso$fit
 
 Die zugrunde liegende Implementierung aus dem `glmnet`-Paket bestimmt eine Folge von $\lambda$-Werten und ermittelt für diese die Koeffizienten und weitere Kennwerte. Aus dem Ergebnis können wir entnehmen, wie sich die Zahl der Koeffizienten $\beta_i$ ungleich 0 in Abhängigkeit vom Wert für $\lambda$ ergibt:
 
-```{r lasso_nonzeros, eval = FALSE}
+```{r lasso_nonzeros}
 lasso_tab <- tibble(lambda = the_model_lasso$lambda, nonzerovars = the_model_lasso$df)
 
 lasso_tab %>% ggplot(aes(x = log(lambda), y = nonzerovars)) + geom_line(color = "red")
@@ -1386,7 +1416,7 @@ lasso_tab %>% ggplot(aes(x = log(lambda), y = nonzerovars)) + geom_line(color = 
 
 Diese Entwicklung der Zahl genutzter Variablen können wir nun der Qualität des Modells gegenüberstellen. Zuerst wenden wir das Modell auf die Trainingsdaten selbst an, um daraus dann den Trainingsfehler zu bestimmen und ihn anzuzeigen.
 
-```{r chart_lasso_rmse_lambda, eval = FALSE}
+```{r chart_lasso_rmse_lambda}
 pred_lasso <- predict.model_fit(housing_fit_lasso, new_data = train_prepped)
 
 pred_lambda_rmse <- pred_lasso %>% 
@@ -1403,7 +1433,7 @@ ggplot() + geom_line(data = pred_lambda_rmse, aes(x = log(lambda), y = RMSE), co
 ```
 
 Wenn wir das Modell für einen speziellen $\lambda$-Wert haben wollen, müssen wir die entsprechenden Strukturen aus dem Modellobjekt entnehmen:
-```{r}
+```{r lasso_non_zeros}
 my_lambda = exp(9)
 one_mod <- coef(housing_fit_lasso$fit, s = my_lambda)
 
@@ -1420,7 +1450,7 @@ Aus der Graphik oben sehen wir, dass unser Modell mit `r nrow(non_zero_coeffs) -
 
 Damit endet dieses Tutorial. Wir haben einige wichtige Themen der Modellentwicklung und -evaluierung behandelt. Die meisten dieser Themen sind für andere Methoden in ähnlicher Weise durchzuführen. Erfahrungsgemäß wird die Qualität von Modellen durch eine sorgfältige Vorarbeit und Modellvalidierung sehr viel besser als durch den (alleinigen) Wechselzu einem (vermeintlich) mächtigeren Modelltyp.
 
-Durch Ihre Rückmeldung wird dieses Tutorial in Zukunft Schritt für Schritt besser. Rückmeldung daher bitte an $\texttt{\href{mailto:://andreas@cardeneo.de}}$.
+Durch Ihre Rückmeldung wird dieses Tutorial in Zukunft Schritt für Schritt besser. Rückmeldung daher bitte an [\texttt{andreas@cardeneo.de}](mailto://andreas@cardeneo.de).
 
 
 
