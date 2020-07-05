@@ -321,6 +321,16 @@ diagnose(raw) %>% arrange(desc(missing_percent))
 
 Deutlich wird, dass die Variable *Pool.QC* wohl häufig keine Werte enthält. Eine Vermutung wäre, dass diese Variable etwas mit dem Vorhandensein eines Pools zu tun hat und dass fehlende Werte schlichtweg bedeuten, dass die Immobilie keinen Pool hat. Etwas anders sieht es bei der Variable *Bsmt.Cond* aus. Diese fehlt in knapp 3% aller Fälle -- ebenso wie andere Variablen mit ähnlichem Namen. Vielleicht ist es hier ähnlich wie bei der Variablen *Pool.QC* und nicht vorhandene Werte bedeuten einen fehlenden Keller. Aber kann es sein, dass bei ca. 3% aller Immobilien kein Keller vorhanden ist? Um dies besser zu verstehen, müsste man mehr über die Bauweise in der Region in Erfahrung bringen: Vielleicht wurden früher bei der Erfassung der Immobiliendaten keine Angaben zum Keller aufgenommen und die Daten fehlen schlichtweg für ältere Immobilien?
 
+```{r q-miss1}
+frage("Für welche Variable fehlen ca. 2.8% aller Werte?",
+      answer("Bsmt.Exposure", correct = TRUE),
+      answer("Mas.Vnr.Area"),
+      answer("Electrical")
+)
+
+```
+
+
 Unabhängig davon, was hier im konkreten Fall Ursache für die fehlenden Werte ist: Bei der explorativen Datenanalyse müssen wir stets berücksichtigen, dass das Fehlen selbst auch eine fachliche Information (hier: *kein Pool vorhanden*) bedeuten kann und nicht immer auf Fehler bei der Datenaufnahme oder -übertragung zurückzuführen ist bzw. mit Änderungen in der Erfassungssystematik zu tun haben muss.
 
 Wir haben durch die obige Analyse schon den Verdacht, dass fehlende Werte für mehrere Variablen in typischen Kombinationen vorkommen: Wenn es keinen Keller gibt oder keine Werte erfasst wurden, dann fehlen wahrscheinlich Werte für alle diesbezüglichen Variablen. Um das zu untersuchen, können wir das Paket `VIM` verwenden. 
@@ -337,7 +347,7 @@ Die für diese Untersuchung gewählte Beschränkung auf Variablen, die fehlende 
 Gehen wir einem konkreten Verdacht nach, dass fehlende Werte für die *Bsmt*-Variablen mit der Lage der Immobilie zu tun haben. Hierfür können wir die Variable *Neighborhood* und die Variable *Bsmt.Cond* verwenden:
 
 ```{r missings_nhood, exercise = TRUE}
-raw %>% dplyr::select(Neighborhood, Bsmt.Cond) %>% 
+raw %>% select(Neighborhood, Bsmt.Cond) %>% 
     mutate(has_basement = !is.na(Bsmt.Cond)) %>% 
     count(Neighborhood, has_basement) %>% 
     ggplot(aes(x = Neighborhood, y = n, fill = has_basement)) +
@@ -493,7 +503,7 @@ housing_variable_types <- function(doc_url = "http://jse.amstat.org/v19n3/decock
 type_data <- housing_variable_types()
 
 housing_categorials <- function(type_frame) {
-  type_frame %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% dplyr::select(VAR) %>% 
+  type_frame %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% select(VAR) %>% 
     mutate(VAR = case_when(
         VAR == "Exterior.1" ~ "Exterior.1st",
         VAR == "Exterior.2" ~ "Exterior.2nd",
@@ -533,7 +543,7 @@ Jetzt liegen die Spaltenbezeichnungen zusammen mit der Datenart als `data.frame`
 
 ```{r fix_broken_docs, eval = FALSE}
 housing_categorials <- function(type_frame) {
-  type_frame %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% dplyr::select(VAR) %>% 
+  type_frame %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% select(VAR) %>% 
     mutate(VAR = case_when(
         VAR == "Exterior.1" ~ "Exterior.1st",
         VAR == "Exterior.2" ~ "Exterior.2nd",
@@ -558,7 +568,7 @@ raw <- raw %>% mutate_at(vars(all_of(categorials)), as.factor)
 Jetzt können wir uns ansehen, wieviele verschiedene Ausprägungen wir für die kategorialen Variablen haben. Nachdem wir schon wissen, dass *PID* eine eindeutige Kennung ist, lassen wir diese Variable aus der Betrachtung heraus. Für die graphische Darstellung bringen wir die Daten mit der `pivot_longer`-Funktion in ein *langes Format* (s. auch @Sauer2019), bei dem die Variablen nicht mehr einzeln in Spalten stehen. Zum besseren Verständis wird die Bildung des langen Datensatzes auf zwei Schritte mit zwischenzeitlicher Ausgabe der Tabelle aufgeteilt.
 
 ```{r count_unique_categories, exercise = TRUE} 
-categ_freq <- raw %>% dplyr::select(all_of(categorials)) %>% dplyr::select(-PID) %>% 
+categ_freq <- raw %>% select(all_of(categorials)) %>% select(-PID) %>% 
     summarise_all(~ length(unique(.))) 
 
 head(categ_freq)
@@ -575,7 +585,7 @@ Im nächsten Schritt gucken wir uns alle kategorialen Variablen an, die 6 oder m
 ```{r find_rare_level_factors, exercise = TRUE}
 rel_categs <- categ_freq %>% filter(Werte >= 6) %>% pull(Variable)
 
-categ_levels <- raw %>% dplyr::select(all_of(rel_categs)) %>% map(~ fct_count(.))
+categ_levels <- raw %>% select(all_of(rel_categs)) %>% map(~ fct_count(.))
 
 ```
 
@@ -615,7 +625,7 @@ numeric_cols <- setdiff(names(raw), categorials)
 
 Für die graphische Darstellung müssen wir den Datensatz wieder in ein *langes Format* bringen, analog dem Vorgehen weiter oben. 
 ```{r viz_numeric_column_densities, fig.height=24, exercise = TRUE}
-raw_rs <- raw %>% select_at(all_of(numeric_cols)) %>% dplyr::select(-Order) %>% 
+raw_rs <- raw %>% select_at(all_of(numeric_cols)) %>% select(-Order) %>% 
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Wert") 
 
 plot_density <- function(data) {
@@ -632,7 +642,7 @@ wrap_plots(plots, ncol = 2)
 
 Durch die Dichtediagramme können wir schon ahnen, welche Variablen wahrscheinlich eine niedrige Varianz aufweisen. Allerdings kann die Intuition auch täuschen, so dass wir die Varianzen der Variablen auch noch rechnerisch bestimmen:
 ```{r compute_variance, exercise = TRUE}
-(nvar_var <- raw %>% select_at(all_of(numeric_cols)) %>% dplyr::select(-Order) %>% 
+(nvar_var <- raw %>% select_at(all_of(numeric_cols)) %>% select(-Order) %>% 
     summarise_all(~ var(., na.rm = TRUE) ) %>%     
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Varianz") %>% 
         arrange(Varianz))
@@ -652,13 +662,13 @@ wobei $Cov(X, Y)$ die *Kovarianz* zwischen den Variablen ist. Eine anschauliche 
 In R gibt es mehrere Möglichkeiten der Berechnung des Korrelationskoeffizienten nach Pearson, u.a. die Standardfunktion `cor` und die hier verwendete Funktion `correlate` aus dem `corrr`-Paket:
 
 ```{r example_correlation, exercise = TRUE}
-(corr_mat <- raw %>% dplyr::select(Gr.Liv.Area, Lot.Area) %>% correlate())
+(corr_mat <- raw %>% select(Gr.Liv.Area, Lot.Area) %>% correlate())
 ```
 
 Wenn wir die Korrelation zwischen vielen Variablenpaaren auswerten wollen, bietet das Paket `ggcorrplot` schöne Unterstützung:
 ```{r viz_correlations, fig.width = 10, exercise = TRUE}
 corr_mat <- raw %>% select_at(all_of(numeric_cols)) %>% 
-    dplyr::select(-Order) %>% drop_na() %>% 
+    select(-Order) %>% drop_na() %>% 
     cor()
 
 corr_mat %>% ggcorrplot(type = "upper", insig = "blank", 
@@ -775,7 +785,7 @@ type_data <- housing_variable_types()
 categorials <- housing_categorials(type_data)
 
 housing_data <- housing_data %>% mutate_at(vars(all_of(categorials)), as.factor) %>% 
-  dplyr::select(-Order, -PID)
+  select(-Order, -PID)
 
 ```
 
@@ -975,7 +985,7 @@ Wir sehen, dass die standardisierten Residuen (Fehler) für einen Großteil des 
 ```{r viz_srdres_over_index, eval = FALSE}
 idx_stdres <- tibble::enframe(std_res, name = "Index", value = "StdRes") %>% 
   mutate(Index = as.integer(Index)) %>% 
-  bind_cols(train_prepped %>% dplyr::select(SalePrice))
+  bind_cols(train_prepped %>% select(SalePrice))
 
 
 idx_stdres %>% 
@@ -1019,7 +1029,7 @@ if (write_mode) {
 housing_pred <- predict(the_model, test_prepped)
 
 pred_truth_test <- tibble::enframe(housing_pred, name = NULL, value = "predicted") %>% 
-  bind_cols(test_data %>% dplyr::select(SalePrice)) %>% 
+  bind_cols(test_data %>% select(SalePrice)) %>% 
   mutate(err = SalePrice - predicted)
 
 plot_var_imp <- function(mdl) {
@@ -1043,7 +1053,7 @@ Die Vorhersagegüte auf Testdaten bestimmen wir einmal anhand von Metriken und a
 ```{r preview_predictions, eval = FALSE}
 
 pred_truth_test <- tibble::enframe(housing_pred, name = NULL, value = "predicted") %>% 
-  bind_cols(test_data %>% dplyr::select(SalePrice)) %>% 
+  bind_cols(test_data %>% select(SalePrice)) %>% 
   mutate(err = SalePrice - predicted)
 
 metrics(pred_truth_test, truth = SalePrice, estimate = predicted)
