@@ -973,6 +973,13 @@ housing_data <- housing_data %>%
   select(-Year.Built, -Year.Remod.Add)
 ```
 
+<div class="check">
+<div class="center">
+**Verständnischeck**
+</div>
+Ist die Berechnung des Gebäudealters oben unkritisch? Welche Annahme steckt implizit dahinter?
+</div>
+
 
 ### Trainings- und Testdatensplit
 ```{r create_data_split, eval = FALSE}
@@ -1025,6 +1032,13 @@ housing_rec %>%
 
 Bei der linearen Regression werden die Variablenausprägungen $x_i$ mit den Koeffizienten $\hat{\beta}_i$ multiplziert und addiert. Es muss sich daher bei den Ausprägungen um Zahlenwerte handeln - kategoriale Variablen verwenden aber oft alphanumerische Bezeichnungen für die Ausprägungen. Und selbst wenn die Ausprägungen über Zahlen codiert werden, lässt sich mit diesen Zahlen nicht sinnvoll rechnen. Wir benötigen also einen Weg, die Ausprägungen kategorialer Variablen in Rechengrößen umzuwandeln. Dies wird durch verschiedene Formen der *Codierung* geleistet. Es gibt verschiedene Formen der Codierung, die sich hinsichtlich ihrer statistischen Eigenschafen unterscheiden. Gebräuchlich, wenn auch nicht immer die beste Wahl, sind das *one-hot-encoding* und das *dummy-encoding*. Beim one-hot-encoding einer kategorialen Variablen $x_i$ führt man für jede Ausprägung $\ell$ eine neue Variable $x_i^\ell$ ein, die über die Werte 0 und 1 für jede Beobachtung codiert, ob die ursprüngliche Ausprägung $\ell$ war (1) oder nicht (0). Die neuen Variablen sind also Indikatorvariablen für die Ausprägungen. Bei $L$ verschiedenen Ausprägungen erhält man  damit beim one-hot-encoding $L$ neue Variablen, die die ursprüngliche Variable im Modell ersetzen. Allerdings ist diese Codierung redundant, denn es würden $L-1$ binäre Variablen ausreichen, um $L$ verschiedene Ausprägungen zu modellieren: Der Fall, dass alle $L-1$ Variablen den Wert 0 haben wird nämlich beim one-hot-encoding nicht genutzt, weil immer genau eine Variable den Wert 1 hat. Beim dummy-encoding hingegen wählt man eine Referenzausprägung und weist dieser implizit die Codierung durch $L-1$ 0-Werte zu. Dies hat auch den Vorteil, dass die durch one-hot-encoding eingeführte lineare Abhängigkeit zwischen den $L$ Variablen und der (impliziten) Variable für den $\hat{\beta}_0$-Term (man kann sich eine Variable $x_0=1$ denken) vermieden wird. Bei der dummy-Codierung muss man entscheiden, welche Ausprägung zur Referenzausprägung wird. Im Regressionsmodell entspricht $\hat{\beta}_0$ dann dem Mittelwert der Referenzausprägung. Es ist daher wichtig eine Ausprägung zur Referenzausprägung zu wählen, die im Datensatz häufig vorkommt - ansonsten ist der Mittelwert nicht valide.    
 
+<div class="check">
+<div class="center">
+**Verständnischeck**
+</div>
+Rufen Sie bitte die Seite https://stats.idre.ucla.edu/r/library/r-library-contrast-coding-systems-for-categorical-variables/#dummy auf und erklären Sie anhand des Beispiels die Dummy-Codierung. 
+</div>
+
 ```{r recipe_step_dummy_encoding, eval = FALSE}
 housing_rec %>% step_dummy(all_nominal(), one_hot = FALSE) -> housing_rec
 ```
@@ -1048,7 +1062,6 @@ Manchmal *skaliert* man die Variablen auch noch zusätzlich zur Zentrierung: Das
 housing_rec %>% step_center(all_predictors()) %>%
   step_scale(all_predictors()) -> housing_rec
 ```
-
 
 ### Bereinigung um stark korrelierte Variablen
 
@@ -1182,6 +1195,7 @@ An dieser Stelle kann man den Prozess der Modellbildung noch fortsetzen:
 * Weisen die hochpreisigen Immobilien noch Besonderheiten auf?
 * Wie verhält es sich mit den Ausreissern im niedrigeren Preisbereich: Was zeichnet diese aus?
 * Könnten wir noch weitere Merkmale erzeugen, bspw. indem wir die Grundfläche der Immobilie als zusätzliche Variable quadratisch eingehen lassen? 
+* Ist die Varianz der Residuen konstant?
 
 Für den Moment belassen wir es aber dabei. Zukünftige Versionen dieses Tutorials werden diese Fragen angehen.
 
@@ -1227,6 +1241,16 @@ test_prepped <- prepared_recipe %>% bake(new_data = test_data)
 
 housing_pred <- predict(the_model, test_prepped)
 ```
+
+<div class="check">
+<div class="center">
+**Verständnischeck**
+</div>
+Die Anwendung des Modells auf Testdaten ist im Prinzip gleich der Anwendung des Modells im produktiven Betrieb.
+Überlegen Sie, welche Vorverarbeitungsschritte, die wir im *Rezept* abgelegt haben, sich vielleicht als 
+kritisch erweisen könnten. Denken Sie daran, dass die Anwendung evtl. deutlich nach dem Training des Modells 
+erfolgt.
+</div>
 
 Die Vorhersagegüte auf Testdaten 
 ```{r preview_predictions, eval = FALSE}
@@ -1280,9 +1304,15 @@ plot_var_imp <- function(mdl) {
 ```
 
 und dann anwenden:
-```{r var_imp_plot}
+```{r var_imp_plot, exercise = TRUE}
+# Rufen Sie die obige Funktion für den Plot der Variablenwichtigkeit für das Modell auf.
+
+```
+
+```{r var_imp_plot-solution}
 plot_var_imp(the_model)
 ```
+
 
 Statistisch kann jedem Koeffizienten $\hat{\beta}_i$ auch ein Konfidenzintervall zugeordnet werden. Das Paket `sjPlot` bietet die Funktion `plot_model`, das für alle (oder eine Auswahl) von Variablen die Schätzwerte $\hat{\beta}_i$ und deren Konfidenzintervalle darstellt:
 
@@ -1293,10 +1323,11 @@ plot_model(the_model, type = "est", sort.est = TRUE, vline.color = "black")
 
 Bei den Variablen, deren Konfidenzintervall die 0 einschließt, können wir nicht sicher sein, dass sie immer zu einer guten Schätzung der Zielvariablen, also des Verkaufspreises, beitragen. Diese Variablen sollten wir daher nicht für ein produktives Modell wählen.
 
-*Anmerkung* Wir sollten eigentlich bei `type` den Wert `std` wählen, damit wir die standardisierten Koeffizienten angezeigt bekommen. Aus ungeklärter Ursache, funktioniert das hier aber nicht.
+*Anmerkung* Wir sollten eigentlich bei `type` den Wert `std` wählen, damit wir die standardisierten Koeffizienten angezeigt bekommen. Aus ungeklärter Ursache funktioniert das hier aber nicht.
 
 ## Alternative Modelle
 Anstelle Linearer Regression könnten wir verschiedene andere Modelltypen verwenden: *Entscheidungsbäume*, *Random Forests*, *Gradient Boosting*, *neuronale Netze* usw. Aber angesichts eines schon erreichten Bestimmtheitsmaßes von 0.86 können wir nicht allzu große Verbesserungen erwarten. Und von so einer kleinen Verbesserung wird unsere Entscheidung für oder gegen die Übernahme des Maklerauftrags nicht abhängen. Wir können Verbesserungen eher auf andere Weise erreichen:
+
 * Können wir ein hinreichend gutes Modell erstellen, dass mit weniger Variablen auskommt? Je weniger Variablen, desto weniger Eingaben benötigt unser Tool und der Prozess läuft schneller und sicherer.
 * Können wir uns vielleicht auf rein numerische Variablen beschränken? Das wäre auch leichter zu benutzen, weil Kategorien nicht immer eindeutig sind.
 
@@ -1347,6 +1378,14 @@ recipe(SalePrice ~ ., data = training_data) %>%
   step_corr(all_predictors(), threshold = 0.8) -> housing_rec_num
 ```
 
+```{r q-step_rm, echo = FALSE}
+frage("Was macht der erste Schritt im obigen Rezept?",
+      answer("Löscht alle kategoriale Variablen", correct = TRUE),
+      answer("Setzt das Rezept zurück auf Standardwerte"),
+      answer("Reserviert Speicher für alle Variablen"))
+```
+
+
 Das Training des Modells ist ebenfalls analog zu oben:
 
 ```{r train_numerical_recipe, eval = FALSE}
@@ -1362,9 +1401,16 @@ the_model_num <- housing_fit_num$fit
 ```
 
 Die Ergebnisse können wir uns wieder als `summary`
-```{r train_numerical_recipe_summary}
+```{r train_numerical_recipe_summary, exercise = TRUE}
+# Geben Sie ein `summary` für das soeben berechnete Modell aus
+
+```
+
+```{r train_numerical_recipe_summary-solution}
 summary(the_model_num)
 ```
+
+
 
 und als Plot unter Wiederverwendung der obigen Funktion ansehen:
 ```{r train_numerical_recipe_plot}
@@ -1463,7 +1509,7 @@ Aus der Graphik oben sehen wir, dass unser Modell mit `r length(non_zero_coeffs)
 
 ## Schlussbemerkung
 
-Damit endet dieses Tutorial. Wir haben einige wichtige Themen der Modellentwicklung und -evaluierung behandelt. Die meisten dieser Themen sind für andere Methoden in ähnlicher Weise durchzuführen. Erfahrungsgemäß wird die Qualität von Modellen durch eine sorgfältige Vorarbeit und Modellvalidierung sehr viel besser als durch den (alleinigen) Wechselzu einem (vermeintlich) mächtigeren Modelltyp.
+Damit endet dieses Tutorial. Wir haben einige wichtige Themen der Modellentwicklung und -evaluierung behandelt. Die meisten dieser Themen sind für andere Methoden in ähnlicher Weise durchzuführen. Erfahrungsgemäß wird die Qualität von Modellen durch eine sorgfältige Vorarbeit und Modellvalidierung sehr viel besser als durch den (alleinigen) Wechsel zu einem (vermeintlich) mächtigeren Modelltyp.
 
 Durch Ihre Rückmeldung wird dieses Tutorial in Zukunft Schritt für Schritt besser. Rückmeldung daher bitte an [andreas@cardeneo.de](mailto://andreas@cardeneo.de).
 
