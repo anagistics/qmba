@@ -77,6 +77,34 @@ names(raw) <- make.names(names(raw))
 frage <- purrr::partial(learnr::question, submit_button = "antworten", try_again_button = "nochmal versuchen", allow_retry = TRUE, correct = "Richtig!", incorrect = "Leider falsch!",
                         random_answer_order = TRUE)
 
+housing_variable_types <- function(doc_url = "http://jse.amstat.org/v19n3/decock/DataDocumentation.txt") {
+  doku <- url(doc_url, encoding = "latin1") %>% readLines() 
+  data_type_lines <- grep("Nominal|Ordinal|Discrete|Continuous", doku, value = TRUE)
+
+  data_type_lines %>% str_match_all("^(.+)( |\\s)\\((.+)\\)(\\s*):") %>% compact %>% 
+    map(~ c(VAR = .[,2], TYPE = .[,4])) %>% map_dfr(as.list) %>% 
+    mutate(VAR = make.names(VAR))
+}
+
+type_data <- housing_variable_types()
+
+housing_categorials <- function(type_frame) {
+  type_frame %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% select(VAR) %>% 
+    mutate(VAR = case_when(
+        VAR == "Exterior.1" ~ "Exterior.1st",
+        VAR == "Exterior.2" ~ "Exterior.2nd",
+        VAR == "HeatingQC" ~ "Heating.QC",
+        VAR == "KitchenQual" ~ "Kitchen.Qual",
+        VAR == "FireplaceQu" ~ "Fireplace.Qu",
+        VAR == "BsmtFinType.2" ~ "BsmtFin.Type.2",
+        TRUE ~ VAR
+    )) %>% pull()
+}
+
+categorials <- housing_categorials(type_data)
+numeric_cols <- setdiff(names(raw), categorials)
+
+craw <- raw %>% mutate_at(vars(all_of(categorials)), as.factor) 
 
 ```
 
@@ -561,6 +589,7 @@ plot_outlier(raw, X2nd.Flr.SF)
 #### Ausreisser behandeln
 
 Wenn man feststellt, dass es sich bei den Ausreissern nicht um Fehler handelt, bspw. Tippfehler oder falsche Sensormeldungen, hat man folgende Möglichkeiten, mit den Ausreissern umzugehen:
+
 * *Trimmen*: Beim Trimmen gibt man einen Wert $p\in[0,1]$ vor, bspw. $p = 0.9$, und schließt dann alle Beobachtungen aus, bei denen die betrachtete Variable einen Wert unterhalb des $100\cdot\frac{p}{2}\%$-Perzentils bzw. oberhalb des $100\cdot(1 - \frac{p}{2})\%$-Perzentils hat. Im Beispiel würde man also alle Beobachtungen mit Werten unterhalb des 5%- bzw. oberhalb des 95%-Perzentils entfernen.
 * *Winsorisieren*: Hier gibt man auch einen Wert $p\in[0,1]$ vor, bspw. $p = 0.9$, und setzt dann alle Datenwerte unterhalb des $100\cdot\frac{p}{2}\%$-Perzentils auf den Wert des $100\cdot\frac{p}{2}\%$-Perzentils und analog dazu alle Werte größer als das $100\cdot(1 - \frac{p}{2})\%$-Perzentil auf den Wert des $100\cdot(1 - \frac{p}{2})\%$-Perzentils. Im Beispiel wären die untere bzw. obere Grenze also das 5%- bzw. das 95%-Perzentil.
 
@@ -581,40 +610,6 @@ Erstellen Sie selbst analog ein Histogramm für die Variable *Overall.Cond*:
 ```{r self_histo-solution}
 raw %>% ggplot(aes(x = Overall.Cond)) + geom_histogram(stat = "count")
 ```
-
-
-
-
-```{r prep_var_type_handling, include = FALSE}
-housing_variable_types <- function(doc_url = "http://jse.amstat.org/v19n3/decock/DataDocumentation.txt") {
-  doku <- url(doc_url, encoding = "latin1") %>% readLines() 
-  data_type_lines <- grep("Nominal|Ordinal|Discrete|Continuous", doku, value = TRUE)
-
-  data_type_lines %>% str_match_all("^(.+)( |\\s)\\((.+)\\)(\\s*):") %>% compact %>% 
-    map(~ c(VAR = .[,2], TYPE = .[,4])) %>% map_dfr(as.list) %>% 
-    mutate(VAR = make.names(VAR))
-}
-
-type_data <- housing_variable_types()
-
-housing_categorials <- function(type_frame) {
-  type_frame %>% filter(TYPE %in% c("Nominal", "Ordinal")) %>% select(VAR) %>% 
-    mutate(VAR = case_when(
-        VAR == "Exterior.1" ~ "Exterior.1st",
-        VAR == "Exterior.2" ~ "Exterior.2nd",
-        VAR == "HeatingQC" ~ "Heating.QC",
-        VAR == "KitchenQual" ~ "Kitchen.Qual",
-        VAR == "FireplaceQu" ~ "Fireplace.Qu",
-        VAR == "BsmtFinType.2" ~ "BsmtFin.Type.2",
-        TRUE ~ VAR
-    )) %>% pull()
-}
-
-categorials <- housing_categorials(type_data)
-
-raw <- raw %>% mutate_at(vars(all_of(categorials)), as.factor) 
-```
-
 
 Aus Histogrammen können wir ableiten, welche Werte je Variable sehr selten auftreten. Gerade bei der Analyse kategorialer Variablen stellt sich oft heraus, dass einige Ausprägungen sehr selten auftreten. Eine Analyse auf Basis dieser Ausprägungen würde statistisch wertlos sein, da die Anzahl der Beobachtungen pro Ausprägung nicht für statistisch valide Aussagen ausreicht. Daher ist es empfehlenswert und üblich, seltene Ausprägungen zu Gruppen zusammenzufassen und eine neue Dummy-Ausprägung, bspw. *sonstige*, für diese einzuführen.
 
@@ -657,14 +652,14 @@ categorials <- housing_categorials(type_data)
 
 Zunächst modifizieren wir unseren Datensatz so, dass R die kategorialen Variablen erkennt, indem wir die entsprechenden Spalten zu `factors` konvertieren.
 ```{r make_factors, eval = FALSE}
-raw <- raw %>% mutate_at(vars(all_of(categorials)), as.factor) 
+craw <- raw %>% mutate_at(vars(all_of(categorials)), as.factor) 
 ```
 
 
 Jetzt können wir uns ansehen, wieviele verschiedene Ausprägungen wir für die kategorialen Variablen haben. Nachdem wir schon wissen, dass *PID* eine eindeutige Kennung ist, lassen wir diese Variable aus der Betrachtung heraus. Für die graphische Darstellung bringen wir die Daten mit der `pivot_longer`-Funktion in ein *langes Format* (s. auch @Sauer2019), bei dem die Variablen nicht mehr einzeln in Spalten stehen. Zum besseren Verständis wird die Bildung des langen Datensatzes auf zwei Schritte mit zwischenzeitlicher Ausgabe der Tabelle aufgeteilt.
 
 ```{r count_unique_categories, fig.height = 15} 
-categ_freq <- raw %>% select(all_of(categorials)) %>% select(-PID) %>% 
+categ_freq <- craw %>% select(all_of(categorials)) %>% select(-PID) %>% 
     summarise_all(~ length(unique(.))) 
 
 head(categ_freq)
@@ -683,7 +678,7 @@ Im nächsten Schritt gucken wir uns alle kategorialen Variablen an, die 6 oder m
 ```{r find_rare_level_factors}
 rel_categs <- categ_freq %>% filter(Werte >= 6) %>% pull(Variable)
 
-categ_levels <- raw %>% select(all_of(rel_categs)) %>% map(~ fct_count(.))
+categ_levels <- craw %>% select(all_of(rel_categs)) %>% map(~ fct_count(.))
 
 ```
 
@@ -722,13 +717,13 @@ Wenn wir nur einzelne Variablen betrachten, können wir als Statistik für den I
 
 Als ersten Schritt visualisieren wir die Verteilungen (genauer: Dichtefunktionen) der numerischen Variablen. Nachdem wir oben schon die kategorialen Variablen identifiziert haben, können wir die numerischen einfach als Differenz zur vollständigen Variablenmenge ermitteln:
 
-```{r define_numeric_columns}
-numeric_cols <- setdiff(names(raw), categorials)
+```{r define_numeric_columns, eval = FALSE}
+numeric_cols <- setdiff(names(craw), categorials)
 ```
 
 Für die graphische Darstellung müssen wir den Datensatz wieder in ein *langes Format* bringen, analog dem Vorgehen weiter oben. 
 ```{r viz_numeric_column_densities, fig.height=24}
-raw_rs <- raw %>% select_at(all_of(numeric_cols)) %>% select(-Order) %>% 
+raw_rs <- craw %>% select_at(all_of(numeric_cols)) %>% select(-Order) %>% 
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Wert") 
 
 plot_density <- function(data) {
@@ -754,7 +749,7 @@ wrap_plots(plots, ncol = 2)
 
 Durch die Dichtediagramme können wir schon ahnen, welche Variablen wahrscheinlich eine niedrige Varianz aufweisen. Allerdings kann die Intuition auch täuschen, so dass wir die Varianzen der Variablen auch noch rechnerisch bestimmen:
 ```{r compute_variance}
-(nvar_var <- raw %>% select_at(all_of(numeric_cols)) %>% select(-Order) %>% 
+(nvar_var <- craw %>% select_at(all_of(numeric_cols)) %>% select(-Order) %>% 
     summarise_all(~ var(., na.rm = TRUE) ) %>%     
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Varianz") %>% 
         arrange(Varianz))
@@ -774,7 +769,7 @@ wobei $Cov(X, Y)$ die *Kovarianz* zwischen den Variablen ist. Eine anschauliche 
 In R gibt es mehrere Möglichkeiten der Berechnung des Korrelationskoeffizienten nach Pearson, u.a. die Standardfunktion `cor` und die hier verwendete Funktion `correlate` aus dem `corrr`-Paket:
 
 ```{r prep_corr_mat, include = FALSE}
-corr_mat <- raw %>% select(Gr.Liv.Area, Lot.Area) %>% correlate()
+corr_mat <- craw %>% select(Gr.Liv.Area, Lot.Area) %>% correlate()
 ```
 
 ```{r example_correlation, exercise = TRUE, exercise.lines = 10}
@@ -787,13 +782,13 @@ corr_mat <- raw %>% select(Gr.Liv.Area, Lot.Area) %>% correlate()
 ```
 
 ```{r example_correlation-solution}
-corr_mat <- raw %>% select(Gr.Liv.Area, Lot.Area) %>% correlate()
+corr_mat <- craw %>% select(Gr.Liv.Area, Lot.Area) %>% correlate()
 corr_mat
 ```
 
 Wenn wir die Korrelation zwischen vielen Variablenpaaren auswerten wollen, bietet das Paket `ggcorrplot` schöne Unterstützung:
 ```{r viz_correlations, fig.width = 10}
-corr_mat <- raw %>% select_at(all_of(numeric_cols)) %>% 
+corr_mat <- craw %>% select_at(all_of(numeric_cols)) %>% 
     select(-Order) %>% drop_na() %>% 
     cor()
 
@@ -831,7 +826,7 @@ Zunächst erstellen wir ein lineares Modell mit dem Verkaufspreis al abhängiger
 ```{r example_linear_model}
 linmod <- lm(SalePrice ~ Gr.Liv.Area + Wood.Deck.SF + Bedroom.AbvGr + 
                Full.Bath + TotRms.AbvGrd,
-             data = raw %>% select_at(all_of(numeric_cols)))
+             data = craw %>% select_at(all_of(numeric_cols)))
 
 summary(linmod)
 
@@ -847,7 +842,7 @@ Der VIF-Wert für eine unabhängige Variable wird über das *Bestimmtheitsmaß* 
 ```{r lm_for_indep_bedroom}
 bdrm_mod <- lm(formula = Bedroom.AbvGr ~ Gr.Liv.Area + Wood.Deck.SF + 
                  Full.Bath + TotRms.AbvGrd, 
-               data = raw %>% select_at(all_of(numeric_cols)))
+               data = craw %>% select_at(all_of(numeric_cols)))
 
 summary(bdrm_mod)
 ```
@@ -867,14 +862,14 @@ Analog wird der VIF-Wert für die Variable *Gr.Liv.Area* ermittelt:
 
 ```{r lm_for_indep_livarea-solution}
 gla_mod <- lm(formula = Gr.Liv.Area ~ Bedroom.AbvGr + Wood.Deck.SF + Full.Bath + TotRms.AbvGrd, 
-               data = raw %>% select_at(all_of(numeric_cols)))
+               data = craw %>% select_at(all_of(numeric_cols)))
 
 summary(gla_mod)
 ```
 
 ```{r prep_lm_for_indep_livarea, include = FALSE}
 gla_mod <- lm(formula = Gr.Liv.Area ~ Bedroom.AbvGr + Wood.Deck.SF + Full.Bath + TotRms.AbvGrd, 
-               data = raw %>% select_at(all_of(numeric_cols)))
+               data = craw %>% select_at(all_of(numeric_cols)))
 
 ```
 
@@ -889,7 +884,7 @@ entsprechen, also knapp 0.9. Wir sehen, der VIF-Wert wächst recht schnell für 
 Wie würde das Regressionsmodell aussehen, wenn wir nur die hochkorrelierte Variable *Gr.Liv.Area* verwenden würden?
 ```{r example_simple_linear_model}
 gla1_mod <- lm(formula = SalePrice ~ Gr.Liv.Area, 
-               data = raw %>% select_at(all_of(numeric_cols)))
+               data = craw %>% select_at(all_of(numeric_cols)))
 
 summary(gla1_mod)
 ```
@@ -898,7 +893,7 @@ Und wenn wir die anderen nicht hoch korrelierten Variablen nehmen?
 
 ```{r example_three_var_linear_model}
 lc_mod <- lm(formula = SalePrice ~ Wood.Deck.SF + Bedroom.AbvGr + Full.Bath, 
-             data = raw %>% select_at(all_of(numeric_cols)))
+             data = craw %>% select_at(all_of(numeric_cols)))
 
 summary(lc_mod)
 ```
@@ -907,7 +902,7 @@ Also offensichtlich können wir nicht einfach alle hochkorrelierten Variablen en
 
 ```{r example_four_var_linear_model}
 gwbf_mod <- lm(formula = SalePrice ~ Gr.Liv.Area + Wood.Deck.SF + Bedroom.AbvGr + Full.Bath, 
-             data = raw %>% select_at(all_of(numeric_cols)))
+             data = craw %>% select_at(all_of(numeric_cols)))
 
 summary(gwbf_mod)
 
@@ -1513,6 +1508,10 @@ Damit endet dieses Tutorial. Wir haben einige wichtige Themen der Modellentwickl
 
 Durch Ihre Rückmeldung wird dieses Tutorial in Zukunft Schritt für Schritt besser. Rückmeldung daher bitte an [andreas@cardeneo.de](mailto://andreas@cardeneo.de).
 
+
+### Lizenz
+
+Dieses Werk steht unter der [Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA .0)](https://creativecommons.org/licenses/by-sa/4.0/)-Lizenz.
 
 
 
