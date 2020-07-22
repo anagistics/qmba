@@ -78,12 +78,18 @@ frage <- purrr::partial(learnr::question, submit_button = "antworten", try_again
                         random_answer_order = TRUE)
 
 housing_variable_types <- function(doc_url = "http://jse.amstat.org/v19n3/decock/DataDocumentation.txt") {
-  doku <- url(doc_url, encoding = "latin1") %>% readLines() 
-  data_type_lines <- grep("Nominal|Ordinal|Discrete|Continuous", doku, value = TRUE)
-
-  data_type_lines %>% str_match_all("^(.+)( |\\s)\\((.+)\\)(\\s*):") %>% compact %>% 
-    map(~ c(VAR = .[,2], TYPE = .[,4])) %>% map_dfr(as.list) %>% 
-    mutate(VAR = make.names(VAR))
+  if (write_mode) {
+    doku <- url(doc_url, encoding = "latin1") %>% readLines() 
+    data_type_lines <- grep("Nominal|Ordinal|Discrete|Continuous", doku, value = TRUE)
+  
+    dtab <- data_type_lines %>% str_match_all("^(.+)( |\\s)\\((.+)\\)(\\s*):") %>% compact %>% 
+      map(~ c(VAR = .[,2], TYPE = .[,4])) %>% map_dfr(as.list) %>% 
+      mutate(VAR = make.names(VAR))
+    saveRDS(dtab, file = paste0(dir_pattern, "housing_var_types.rds"))
+  } else {
+    dtab <- readRDS(file = paste0(dir_pattern, "housing_var_types.rds"))
+  }
+  dtab
 }
 
 type_data <- housing_variable_types()
@@ -1040,7 +1046,7 @@ housing_rec %>% step_dummy(all_nominal(), one_hot = FALSE) -> housing_rec
 
 ### Konstante Variablen entfernen
 
-Der nächste Schritt entfernt die Variablen, die entweder eine sehr kleine Varianz oder eine sehr stark dominierende Ausprägung haben, d.h. wir wenden die Funktion `step_nvz` sowohl auf numerische als auch auf kategoriale oder nominale Variablen an.  
+Der nächste Schritt entfernt die Variablen, die entweder eine sehr kleine Varianz oder eine sehr stark dominierende Ausprägung haben, d.h. wir wenden die Funktion `step_nzv` sowohl auf numerische als auch auf kategoriale oder nominale Variablen an.  
 
 ```{r recipe_step_low_variance, eval = FALSE}
 housing_rec %>% 
@@ -1187,6 +1193,7 @@ idx_stdres %>%
 ```
 
 An dieser Stelle kann man den Prozess der Modellbildung noch fortsetzen: 
+
 * Weisen die hochpreisigen Immobilien noch Besonderheiten auf?
 * Wie verhält es sich mit den Ausreissern im niedrigeren Preisbereich: Was zeichnet diese aus?
 * Könnten wir noch weitere Merkmale erzeugen, bspw. indem wir die Grundfläche der Immobilie als zusätzliche Variable quadratisch eingehen lassen? 
